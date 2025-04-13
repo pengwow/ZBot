@@ -1,0 +1,5 @@
+pandas
+peewee
+requests
+fastapi
+ccxt
