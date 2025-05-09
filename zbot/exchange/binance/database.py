@@ -1,5 +1,6 @@
 import peewee
 from zbot.models.candle import Candle as CandleBase
+from zbot.services.db import database
 
 
 class Candle(CandleBase):
@@ -15,3 +16,13 @@ class Candle(CandleBase):
     open_time = peewee.BigIntegerField(null=True)
     # 收盘时间
     close_time = peewee.BigIntegerField(null=True)
+
+    class Meta:
+        table_name = "binance_candle"
+        database = database.db
+        indexes = ((("symbol", "timeframe", "timestamp"), True),)
+
+
+database.open_connection()
+database.db.create_tables([Candle])
+database.db.close()

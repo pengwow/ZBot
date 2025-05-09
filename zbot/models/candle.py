@@ -1,5 +1,5 @@
 import peewee
-from zbot.services.db import database
+
 
 class Candle(peewee.Model):
     id = peewee.UUIDField(primary_key=True)
@@ -13,7 +13,8 @@ class Candle(peewee.Model):
     timeframe = peewee.CharField()
 
     class Meta:
-        database = database.db
         indexes = (
             (('symbol', 'timeframe', 'timestamp'), True),
         )
+
+
