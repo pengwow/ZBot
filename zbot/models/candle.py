@@ -2,7 +2,7 @@ import peewee
 
 
 class Candle(peewee.Model):
-    id = peewee.UUIDField(primary_key=True)
+    id = peewee.AutoField()
     timestamp = peewee.BigIntegerField()
     open = peewee.FloatField()
     close = peewee.FloatField()

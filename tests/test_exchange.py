@@ -14,7 +14,7 @@ exchange_class = getattr(ccxt, exchange_id)
 exchange = exchange_class({
     'apiKey': 'EQejQgZXTqrwORDHLDVBcroKupBfvZzCpOc3qDcDBqDk7Bl6WZVRhc5LBJaxZ99v',
     'secret': '4i1j4gd7bnvF2QKECIPmK9kxzFD2Y1XOyt3V8LG2kdiFRJudjIII8vBMiDTkZCDX',
-    'httpProxy': 'http://127.0.0.1:7890'
+    'httpsProxy': 'http://127.0.0.1:7890/'
 })
 # exchange.proxy = proxies
 import time
@@ -26,19 +26,22 @@ def get_raw_ohlcv():
         res.append(ohlcv)
         return res
     exchange.parse_ohlcv = prase_ohlcv_custom
-    res = exchange.fetch_ohlcv('BTC/USDT', '1d')
+    res = exchange.fetch_ohlcv('BTC/USDT', '1d', limit=10)
+    return res
 
-if exchange.has['fetchOHLCV']:
-    prase_ohlcv_original = exchange.parse_ohlcv
-    def prase_ohlcv_custom(ohlcv, market):
-        res = prase_ohlcv_original(ohlcv, market)
-        res.append(ohlcv)
-        return res
+print(get_raw_ohlcv())
 
-
-    exchange.parse_ohlcv = prase_ohlcv_custom
-    res = exchange.fetch_ohlcv('BTC/USDT', '1d')
-    print(res)
+# if exchange.has['fetchOHLCV']:
+#     prase_ohlcv_original = exchange.parse_ohlcv
+#     def prase_ohlcv_custom(ohlcv, market):
+#         res = prase_ohlcv_original(ohlcv, market)
+#         res.append(ohlcv)
+#         return res
+#
+#
+#     exchange.parse_ohlcv = prase_ohlcv_custom
+#     res = exchange.fetch_ohlcv('BTC/USDT', '1d')
+#     print(res)
 # import asyncio
 # 原始蜡烛图数据
 # async def test():

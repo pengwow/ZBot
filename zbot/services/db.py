@@ -9,7 +9,7 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class Database(object):
     def __init__(self):
-        db_path = sys.path.join(base_path, "zbot")
+        db_path = os.path.join(base_path, "zbot")
         self.db: SqliteDatabase = SqliteDatabase(db_path)
 
     def closed(self):
@@ -17,6 +17,7 @@ class Database(object):
             return True
         if self.db.is_closed():
             self.db.close()
+        return True
 
     def is_open(self) -> bool:
         if self.db is None:
