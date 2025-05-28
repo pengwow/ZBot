@@ -12,8 +12,6 @@ class Candle(CandleBase):
     buy_volume = peewee.FloatField(default=0)
     # 主动买入成交额
     buy_turnover = peewee.FloatField(default=0)
-    # 开盘时间
-    open_time = peewee.BigIntegerField(null=True)
     # 收盘时间
     close_time = peewee.BigIntegerField(null=True)
 
