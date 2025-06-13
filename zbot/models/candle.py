@@ -3,7 +3,7 @@ import peewee
 
 class Candle(peewee.Model):
     id = peewee.AutoField()
-    timestamp = peewee.BigIntegerField()
+    open_time = peewee.BigIntegerField()
     open = peewee.FloatField()
     close = peewee.FloatField()
     high = peewee.FloatField()
@@ -14,7 +14,7 @@ class Candle(peewee.Model):
 
     class Meta:
         indexes = (
-            (('symbol', 'timeframe', 'timestamp'), True),
+            (('symbol', 'timeframe', 'open_time'), True),
         )
 
 

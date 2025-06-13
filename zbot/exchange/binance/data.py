@@ -1,7 +1,12 @@
 # coding=utf-8
+import zipfile
+import pandas as pd
+import numpy as np
 import aiohttp
 import asyncio
 import ccxt
+from io import BytesIO
+
 from zbot.data.history import History as HistoryBase
 from zbot.exchange.binance.models import Candle
 
@@ -15,23 +20,27 @@ class History(HistoryBase):
         # self.prase_ohlcv_original = self.exchange.parse_ohlcv
         self.exchange.parse_ohlcv = self.prase_ohlcv_custom
 
+        self.candle_names = ['open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_volume',
+                            'count', 'taker_buy_volume', 'taker_buy_quote_volume', 'ignore']
+
     def prase_ohlcv_custom(self, ohlcv, market):
         # 获取原始OHLCV响应
         return ohlcv
 
     @staticmethod
     def format_candle(candle: list) -> dict:
-        return dict(timestamp=candle[0],
+        return dict(open_time=candle[0],
                     open=candle[1],
                     high=candle[2],
                     low=candle[3],
                     close=candle[4],
                     volume=candle[5],
                     close_time=candle[6],
-                    turnover=candle[7],
-                    trade_count=candle[8],
-                    buy_volume=candle[9],
-                    buy_turnover=candle[10]
+                    quote_volume=candle[7],
+                    count=candle[8],
+                    taker_buy_volume=candle[9],
+                    taker_buy_quote_volume=candle[10],
+                    ignore=candle[11]
                     )
 
     def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500):
@@ -44,12 +53,15 @@ class History(HistoryBase):
         print(res)
         Candle.bulk_create(bulk_data)
 
-    def download_archive_data(self):
-        asyncio.run(self.get_daily_klines('BTC/USDT', '15m', 'futures', '2024-10-27'))
+    def download_archive_data(self, symbol, timeframe, candle_type, date):
+        res = asyncio.run(self.get_daily_klines(symbol, timeframe, candle_type, date))
+        print(res.head())
 
-    def get_url_by_candle_type(self, candle_type):
-        if candle_type == 'spot':
-            return 'spot'
+
+    @staticmethod
+    def get_url_by_candle_type(candle_type):
+        if candle_type in ('spot', 'option'):
+            return candle_type
         elif candle_type == 'futures':
             return 'futures/um'
         else:
@@ -80,10 +92,36 @@ class History(HistoryBase):
     async def get_daily_klines(self, symbol, timeframe, candle_type, date):
         url = self.get_zip_url(symbol, timeframe, candle_type, date)
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                print(f"状态码: {response.status}")
-                html = await response.text()  # 获取文本响应
-                return html[:100]  # 截取前100字符
+            async with session.get(url, proxy=self.exchange.httpsProxy) as resp:
+                if resp.status == 200:
+                    content = await resp.read()
+                    # logger.debug(f"Successfully downloaded {url}")
+                    with zipfile.ZipFile(BytesIO(content)) as zipf:
+                        with zipf.open(zipf.namelist()[0]) as csvf:
+                            # https://github.com/binance/binance-public-data/issues/283
+                            first_byte = csvf.read(1)[0]
+                            if chr(first_byte).isdigit():
+                                header = None
+                            else:
+                                header = 0
+                            csvf.seek(0)
+
+                            df = pd.read_csv(
+                                csvf,
+                                usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                                names=self.candle_names,
+                                header=header,
+                            )
+                            df["date"] = pd.to_datetime(
+                                np.where(df["date"] > 1e13, df["date"] // 1000, df["date"]),
+                                unit="ms",
+                                utc=True,
+                            )
+                            return df
+                return ''
+                # print(f"状态码: {resp.status}")
+                # html = await resp.text()  # 获取文本响应
+                # return html[:100]  # 截取前100字符
 
 
 if __name__ == '__main__':
@@ -93,5 +131,6 @@ if __name__ == '__main__':
               }
     h = History(config)
     # h.download_data('BTC/USDT', '15m')
-    res = h.get_zip_url('BTCUSDT', '15m', 'futures', '2024-10-27')
-    print(res)
+    h.download_archive_data('BTCUSDT', '15m', 'futures', '2024-10-27')
+    # res = h.get_zip_url('BTCUSDT', '15m', 'spot', '2024-10-27')
+    # print(res)

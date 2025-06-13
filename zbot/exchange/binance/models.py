@@ -4,21 +4,23 @@ from zbot.services.db import database
 
 
 class Candle(CandleBase):
-    # 成交额
-    turnover = peewee.FloatField(default=0)
-    # 成交笔数
-    trade_count = peewee.IntegerField(default=0)
-    # 主动买入成交量
-    buy_volume = peewee.FloatField(default=0)
-    # 主动买入成交额
-    buy_turnover = peewee.FloatField(default=0)
     # 收盘时间
     close_time = peewee.BigIntegerField(null=True)
+    # 成交额
+    quote_volume = peewee.FloatField(default=0)
+    # 成交笔数
+    count = peewee.IntegerField(default=0)
+    # 主动买入成交量
+    taker_buy_volume = peewee.FloatField(default=0)
+    # 主动买入成交额
+    taker_buy_quote_volume = peewee.FloatField(default=0)
+    # 忽略
+    ignore = peewee.BooleanField(default=False)
 
     class Meta:
         table_name = "binance_candle"
         database = database.db
-        indexes = ((("symbol", "timeframe", "timestamp"), True),)
+        indexes = ((("symbol", "timeframe", "open_time"), True),)
 
 
 database.open_connection()
