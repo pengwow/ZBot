@@ -6,7 +6,8 @@ import aiohttp
 import asyncio
 import ccxt
 from io import BytesIO
-
+import ssl
+import certifi
 from zbot.data.history import History as HistoryBase
 from zbot.exchange.binance.models import Candle
 
@@ -56,6 +57,7 @@ class History(HistoryBase):
     def download_archive_data(self, symbol, timeframe, candle_type, date):
         res = asyncio.run(self.get_daily_klines(symbol, timeframe, candle_type, date))
         print(res.head())
+        
 
 
     @staticmethod
@@ -89,10 +91,12 @@ class History(HistoryBase):
         )
         return url
 
+    # 异步获取指定日期的K线数据
     async def get_daily_klines(self, symbol, timeframe, candle_type, date):
         url = self.get_zip_url(symbol, timeframe, candle_type, date)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, proxy=self.exchange.httpsProxy) as resp:
+        connector = aiohttp.TCPConnector(ssl=ssl.create_default_context(cafile=certifi.where()))
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.get(url) as resp:
                 if resp.status == 200:
                     content = await resp.read()
                     # logger.debug(f"Successfully downloaded {url}")
@@ -112,8 +116,8 @@ class History(HistoryBase):
                                 names=self.candle_names,
                                 header=header,
                             )
-                            df["date"] = pd.to_datetime(
-                                np.where(df["date"] > 1e13, df["date"] // 1000, df["date"]),
+                            df["open_time"] = pd.to_datetime(
+                                np.where(df["open_time"] > 1e13, df["open_time"] // 1000, df["open_time"]),
                                 unit="ms",
                                 utc=True,
                             )

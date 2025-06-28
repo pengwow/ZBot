@@ -3,4 +3,5 @@ peewee==3.18.1
 requests==2.32.3
 fastapi==0.115.12
 ccxt==4.4.82
+certifi==2024.2.2
 
