@@ -1,4 +1,5 @@
 # coding=utf-8
+from tkinter import N
 import zipfile
 import pandas as pd
 import numpy as np
@@ -21,8 +22,11 @@ class History(HistoryBase):
         # self.prase_ohlcv_original = self.exchange.parse_ohlcv
         self.exchange.parse_ohlcv = self.prase_ohlcv_custom
 
-        self.candle_names = ['open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_volume',
-                            'count', 'taker_buy_volume', 'taker_buy_quote_volume', 'ignore']
+        self.candle_names = [
+            'open_time', 'open', 'high', 'low', 'close', 'volume',
+            'close_time', 'quote_volume', 'count', 'taker_buy_volume',
+            'taker_buy_quote_volume', 'ignore'
+        ]
 
     def prase_ohlcv_custom(self, ohlcv, market):
         # 获取原始OHLCV响应
@@ -30,19 +34,20 @@ class History(HistoryBase):
 
     @staticmethod
     def format_candle(candle: list) -> dict:
-        return dict(open_time=candle[0],
-                    open=candle[1],
-                    high=candle[2],
-                    low=candle[3],
-                    close=candle[4],
-                    volume=candle[5],
-                    close_time=candle[6],
-                    quote_volume=candle[7],
-                    count=candle[8],
-                    taker_buy_volume=candle[9],
-                    taker_buy_quote_volume=candle[10],
-                    ignore=candle[11]
-                    )
+        return dict(
+            open_time=candle[0],
+            open=candle[1],
+            high=candle[2],
+            low=candle[3],
+            close=candle[4],
+            volume=candle[5],
+            close_time=candle[6],
+            quote_volume=candle[7],
+            count=candle[8],
+            taker_buy_volume=candle[9],
+            taker_buy_quote_volume=candle[10],
+            ignore=candle[11]
+        )
 
     def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500):
         res = self.exchange.fetch_ohlcv(symbol, interval, limit=limit)
@@ -51,14 +56,41 @@ class History(HistoryBase):
             # print(self.format_candle(i))
             bulk_data.append(Candle(symbol=symbol, timeframe=interval, **self.format_candle(i)))
             # Candle.create(**self.format_candle(i))
+
         print(res)
         Candle.bulk_create(bulk_data)
 
     def download_archive_data(self, symbol, timeframe, candle_type, date):
         res = asyncio.run(self.get_daily_klines(symbol, timeframe, candle_type, date))
-        print(res.head())
-        
+        if not res.empty:
+            bulk_data = []
+            for _, row in res.iterrows():
+                candle_data = row.to_dict()
+                # 根据 symbol、open_time 和 timeframe 查询是否已存在记录
+                existing_candle = Candle.select().where(
+                    (Candle.symbol == symbol) &
+                    (Candle.timeframe == timeframe) &
+                    (Candle.open_time == candle_data['open_time'])
+                ).first()
+                if existing_candle:
+                    # 如果存在则更新记录
+                    for key, value in candle_data.items():
+                        setattr(existing_candle, key, value)
+                    existing_candle.save()
+                else:
+                    # 如果不存在则创建新记录
+                    bulk_data.append(
+                        Candle(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            **candle_data
+                        )
+                    )
 
+            if bulk_data:
+                Candle.bulk_create(bulk_data)
+
+        print(res.head())
 
     @staticmethod
     def get_url_by_candle_type(candle_type):
@@ -114,26 +146,27 @@ class History(HistoryBase):
                                 csvf,
                                 usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
                                 names=self.candle_names,
-                                header=header,
+                                header=header
                             )
-                            df["open_time"] = pd.to_datetime(
-                                np.where(df["open_time"] > 1e13, df["open_time"] // 1000, df["open_time"]),
-                                unit="ms",
-                                utc=True,
-                            )
+                            # df["open_time"] = pd.to_datetime(
+                            #     np.where(df["open_time"] > 1e13, df["open_time"] // 1000, df["open_time"]),
+                            #     unit="ms",
+                            #     utc=True,
+                            # )
                             return df
-                return ''
-                # print(f"状态码: {resp.status}")
-                # html = await resp.text()  # 获取文本响应
-                # return html[:100]  # 截取前100字符
+        return None
 
 
 if __name__ == '__main__':
-    config = {"apiKey": 'cYeBjS80ysmWBgsbftH2w1KWFZcZ9Zn7UsfF6JuitjZu1hwfEZA6NsxB4veoeqjk',
-              'secret': 'VWuITQrZGcpVm9FdbzHUQKstSCs90f0nzVm3jGk8ac2JogWdNTHjbTOEShrPek70',
-              'httpsProxy': 'http://127.0.0.1:7890/'
-              }
-    h = History(config)
+    from zbot.common.config import read_config
+    config = read_config('BINANCE')
+    binance_config = {
+        "apiKey": config.get('API_KEY'),
+        'secret': config.get('SECRET'),
+        'httpsProxy': config.get('HTTPS_PROXY')
+    }
+    
+    h = History(binance_config)
     # h.download_data('BTC/USDT', '15m')
     h.download_archive_data('BTCUSDT', '15m', 'futures', '2024-10-27')
     # res = h.get_zip_url('BTCUSDT', '15m', 'spot', '2024-10-27')

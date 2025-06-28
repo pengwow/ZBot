@@ -9,7 +9,7 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class Database(object):
     def __init__(self):
-        db_path = os.path.join(base_path, "zbot")
+        db_path = os.path.join(base_path, "zbot.db")
         self.db: SqliteDatabase = SqliteDatabase(db_path)
 
     def closed(self):

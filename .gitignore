@@ -3,3 +3,5 @@
 .vscode/
 .env
 *.pyc
+zbot/zbot.db
+zbot/config.yml
