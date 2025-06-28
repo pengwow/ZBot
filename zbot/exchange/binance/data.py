@@ -1,4 +1,6 @@
 # coding=utf-8
+import os
+from datetime import datetime, timedelta
 from tkinter import N
 import zipfile
 import pandas as pd
@@ -9,24 +11,16 @@ import ccxt
 from io import BytesIO
 import ssl
 import certifi
-from zbot.data.history import History as HistoryBase
+
 from zbot.exchange.binance.models import Candle
 
 
-class History(HistoryBase):
-    def __init__(self, config):
-        # super(History, self).__init__()
-        self.exchange = ccxt.binance(config)
-        # self.exchange. =
-        # self.exchange.httpsProxy = 'https://127.0.0.1:7890/'
-        # self.prase_ohlcv_original = self.exchange.parse_ohlcv
-        self.exchange.parse_ohlcv = self.prase_ohlcv_custom
+class History(object):
+    def __init__(self, exchange):
+        self.exchange = exchange.exchange
+        self.candle_names = exchange.candle_names
 
-        self.candle_names = [
-            'open_time', 'open', 'high', 'low', 'close', 'volume',
-            'close_time', 'quote_volume', 'count', 'taker_buy_volume',
-            'taker_buy_quote_volume', 'ignore'
-        ]
+        self.exchange.parse_ohlcv = self.prase_ohlcv_custom
 
     def prase_ohlcv_custom(self, ohlcv, market):
         # 获取原始OHLCV响应
@@ -60,7 +54,7 @@ class History(HistoryBase):
         print(res)
         Candle.bulk_create(bulk_data)
 
-    def download_archive_data(self, symbol, timeframe, candle_type, date):
+    def download_from_archive(self, symbol, timeframe, candle_type, date):
         res = asyncio.run(self.get_daily_klines(symbol, timeframe, candle_type, date))
         if not res.empty:
             bulk_data = []
@@ -168,6 +162,6 @@ if __name__ == '__main__':
     
     h = History(binance_config)
     # h.download_data('BTC/USDT', '15m')
-    h.download_archive_data('BTCUSDT', '15m', 'futures', '2024-10-27')
+    h.download_from_archive('BTCUSDT', '15m', 'futures', '2024-10-27')
     # res = h.get_zip_url('BTCUSDT', '15m', 'spot', '2024-10-27')
     # print(res)

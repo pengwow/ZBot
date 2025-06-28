@@ -7,16 +7,25 @@ proxies = {
     'https': 'http://127.0.0.1:7890',  # HTTPS 代理
     'websocket': 'ws://127.0.0.1:7890/ws'  # WebSocket 代理
 }
+# proxies = 'http://127.0.0.1:7890/'
+# exchange_id = 'binance'
 
-exchange_id = 'binance'
-
-exchange_class = getattr(ccxt, exchange_id)
-exchange = exchange_class({
+# exchange_class = getattr(ccxt, exchange_id)
+# exchange = exchange_class({
+#     'apiKey': 'EQejQgZXTqrwORDHLDVBcroKupBfvZzCpOc3qDcDBqDk7Bl6WZVRhc5LBJaxZ99v',
+#     'secret': '4i1j4gd7bnvF2QKECIPmK9kxzFD2Y1XOyt3V8LG2kdiFRJudjIII8vBMiDTkZCDX',
+#     # 'httpsProxy': 'http://127.0.0.1:7890/'
+# })
+# exchange.proxyUrl = proxies['http']
+# exchange.http_proxy = proxies
+# exchange.UpdateProxySettings()
+exchange = ccxt.binance({
     'apiKey': 'EQejQgZXTqrwORDHLDVBcroKupBfvZzCpOc3qDcDBqDk7Bl6WZVRhc5LBJaxZ99v',
     'secret': '4i1j4gd7bnvF2QKECIPmK9kxzFD2Y1XOyt3V8LG2kdiFRJudjIII8vBMiDTkZCDX',
     'httpsProxy': 'http://127.0.0.1:7890/'
 })
-# exchange.proxy = proxies
+# exchange.proxyUrl = proxies['http']
+exchange.httpProxyUrl = proxies['http']
 import time
 def get_raw_ohlcv():
     """获取原始蜡烛图数据"""
