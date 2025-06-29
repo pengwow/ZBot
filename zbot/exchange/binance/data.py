@@ -253,7 +253,8 @@ class History(object):
                     Candle.bulk_create(bulk_data)
             # print(res.head())
             if progress_queue:
-                progress_queue.put((i + 1, total))  # 发送当前进度和总数
+                # progress_queue.put((i + 1, total))  # 发送当前进度和总数
+                progress_queue.put((i + 1) / total)
         if progress_queue:
             progress_queue.put(None)  # 发送完成信号
         return date_range

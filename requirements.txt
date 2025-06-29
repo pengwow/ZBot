@@ -9,3 +9,5 @@ pytz==2024.1    # 时区
 pyyaml==6.0.2
 tqdm==4.67.1  # 进度条
 backtesting==0.6.4  # 回测
+streamlit==1.46.1
+# nicegui==2.20.0
