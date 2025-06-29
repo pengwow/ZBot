@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timedelta
 from tkinter import N
 import zipfile
+from numpy.random import f
 import pandas as pd
 import numpy as np
 import aiohttp
@@ -11,8 +12,8 @@ import ccxt
 from io import BytesIO
 import ssl
 import certifi
-
 from zbot.exchange.binance.models import Candle
+from zbot.utils.dateutils import get_date_range
 
 
 class History(object):
@@ -71,6 +72,64 @@ class History(object):
             ignore=candle[11]
         )
 
+    def load_and_clean_data(self, symbol: str, timeframe: str, start_time=None, end_time=None) -> pd.DataFrame:
+        """
+        从数据库读取K线数据并加载到DataFrame，执行数据清理操作
+        :param symbol: 货币对
+        :param timeframe: 时间间隔
+        :param start_time: 开始时间（字符串或时间戳）
+        :param end_time: 结束时间（字符串或时间戳）
+        :return: 清理后的DataFrame
+        """
+        # 处理时间参数
+        if start_time:
+            start_ts = start_time if isinstance(start_time, int) else str_to_timestamp(start_time)
+        else:
+            start_ts = 0
+        
+        if end_time:
+            end_ts = end_time if isinstance(end_time, int) else str_to_timestamp(end_time)
+        else:
+            end_ts = float('inf')
+        
+        # 查询数据库
+        query = Candle.select().where(
+            (Candle.symbol == symbol) &
+            (Candle.timeframe == timeframe) &
+            (Candle.open_time >= start_ts) &
+            (Candle.open_time <= end_ts)
+        ).order_by(Candle.open_time)
+        
+        # 转换为DataFrame
+        df = pd.DataFrame([candle.__data__ for candle in query])
+        
+        if df.empty:
+            return df
+        
+        # 数据清理
+        # 1. 去除重复数据
+        df = df.drop_duplicates(subset=['open_time'], keep='last')
+        
+        # 2. 检查并处理缺失值
+        df = df.dropna()
+        
+        # 3. 确保时间序列连续
+        expected_interval = self._get_interval_ms(timeframe)
+        all_timestamps = pd.date_range(
+            start=pd.to_datetime(df['open_time'].min(), unit='ms'),
+            end=pd.to_datetime(df['open_time'].max(), unit='ms'),
+            freq=f'{expected_interval//1000}S'
+        ).astype(np.int64) // 10**6  # 转换为毫秒级时间戳
+        
+        # 找出缺失的时间戳
+        existing_timestamps = set(df['open_time'])
+        missing_timestamps = [ts for ts in all_timestamps if ts not in existing_timestamps]
+        
+        if missing_timestamps:
+            print(f"警告: 检测到{len(missing_timestamps)}个缺失的K线数据点")
+            
+        return df
+
     def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500):
         # TODO: 未完,根据fetch_ohlcv返回结果,进行遍历,只取所有符合要求的 start_time 和 end_time时间戳数据返回
         all_ohlcv = []
@@ -121,38 +180,39 @@ class History(object):
                     **candle_data
                 )
 
-    def download_from_archive(self, symbol, timeframe, candle_type, date):
-        res = asyncio.run(self.get_daily_klines(
-            symbol, timeframe, candle_type, date))
-        if not res.empty:
-            bulk_data = []
-            for _, row in res.iterrows():
-                candle_data = row.to_dict()
-                # 根据 symbol、open_time 和 timeframe 查询是否已存在记录
-                existing_candle = Candle.select().where(
-                    (Candle.symbol == symbol) &
-                    (Candle.timeframe == timeframe) &
-                    (Candle.open_time == candle_data['open_time'])
-                ).first()
-                if existing_candle:
-                    # 如果存在则更新记录
-                    for key, value in candle_data.items():
-                        setattr(existing_candle, key, value)
-                    existing_candle.save()
-                else:
-                    # 如果不存在则创建新记录
-                    bulk_data.append(
-                        Candle(
-                            symbol=symbol,
-                            timeframe=timeframe,
-                            **candle_data
+    def download_from_archive(self, symbol, timeframe, candle_type, start_date, end_date):
+        date_range = get_date_range(start_date, end_date)
+        for date in date_range:
+            res = asyncio.run(self.get_daily_klines(
+                symbol, timeframe, candle_type, date))
+            if res is not None and not res.empty:
+                bulk_data = []
+                for _, row in res.iterrows():
+                    candle_data = row.to_dict()
+                    # 根据 symbol、open_time 和 timeframe 查询是否已存在记录
+                    existing_candle = Candle.select().where(
+                        (Candle.symbol == symbol) &
+                        (Candle.timeframe == timeframe) &
+                        (Candle.open_time == candle_data['open_time'])
+                    ).first()
+                    if existing_candle:
+                        # 如果存在则更新记录
+                        for key, value in candle_data.items():
+                            setattr(existing_candle, key, value)
+                        existing_candle.save()
+                    else:
+                        # 如果不存在则创建新记录
+                        bulk_data.append(
+                            Candle(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                **candle_data
+                            )
                         )
-                    )
 
-            if bulk_data:
-                Candle.bulk_create(bulk_data)
-
-        print(res.head())
+                if bulk_data:
+                    Candle.bulk_create(bulk_data)
+            print(res.head())
 
     @staticmethod
     def get_url_by_candle_type(candle_type):
@@ -177,6 +237,7 @@ class History(object):
         :param date: 日期
         :return:
         """
+        symbol = symbol.replace('/', '')
         asset_type = self.get_url_by_candle_type(candle_type)
         zip_name = self.get_zip_name(symbol, timeframe, date)
         url = (
@@ -247,3 +308,4 @@ if __name__ == '__main__':
     # h.download_from_archive('BTCUSDT', '15m', 'futures', '2024-10-27')
     # res = h.get_zip_url('BTCUSDT', '15m', 'spot', '2024-10-27')
     # print(res)
+    h.load_and_clean_data('BTCUSDT', '15m','2024-10-27','2024-10-28')

@@ -3,13 +3,16 @@ from playhouse.migrate import SqliteDatabase
 # 项目根目录
 import os
 import sys
+from zbot.common.config import read_config
 
+config = read_config()
 base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class Database(object):
     def __init__(self):
-        db_path = os.path.join(base_path, "zbot.db")
+        self.trading_mode = config.get('TRADING_MODE')
+        db_path = os.path.join(base_path, 'data', f'{self.trading_mode}', "zbot.db")
         self.db: SqliteDatabase = SqliteDatabase(db_path)
 
     def closed(self):

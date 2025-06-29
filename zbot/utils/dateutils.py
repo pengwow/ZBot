@@ -51,18 +51,20 @@ def format_datetime(dt: Optional[datetime] = None, fmt: str = '%Y-%m-%d %H:%M:%S
         dt = datetime.now()
     return dt.strftime(fmt)
 
-def str_to_timestamp(datetime_str: str, fmt: str = '%Y-%m-%d %H:%M:%S', unit: str = 'ms') -> Optional[int]:
+
+def str_to_timestamp(datetime_str: str, unit: str = 'ms') -> Optional[int]:
     """
-    将时间字符串转换为时间戳
-    :param datetime_str: 时间字符串，可能是 %Y-%m-%d 只有日期，或者 %Y-%m-%d %H:%M:%S 包含时间
-    :param fmt: 格式化字符串，默认为 '%Y-%m-%d %H:%M:%S'
+    将时间字符串转换为时间戳，自动检测日期格式
+    :param datetime_str: 时间字符串，支持 '%Y-%m-%d' 或 '%Y-%m-%d %H:%M:%S' 格式
     :param unit: 时间单位，'ms'表示毫秒，'s'表示秒
     :return: 时间戳或None
     """
-    dt = parse_datetime(datetime_str, fmt)
-    if dt is None:
-        return None
-    return datetime_to_timestamp(dt, unit)
+    # 尝试不同格式解析，优先带时间的格式
+    for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d']:
+        dt = parse_datetime(datetime_str, fmt)
+        if dt is not None:
+            return datetime_to_timestamp(dt, unit)
+    return None
 
 
 def parse_datetime(datetime_str: str, fmt: str = '%Y-%m-%d %H:%M:%S') -> Optional[datetime]:
@@ -125,26 +127,40 @@ def convert_timezone(dt: datetime, from_tz: str = 'UTC', to_tz: str = 'Asia/Shan
     to_tz = pytz.timezone(to_tz)
     return from_tz.localize(dt).astimezone(to_tz)
 
-def get_date_range(start_date: str, end_date: str, fmt: str = '%Y-%m-%d') -> list:
+
+def get_date_range(start_date: Union[str, int], end_date: Union[str, int], fmt: str = '%Y-%m-%d') -> list:
     """
     根据开始和结束时间返回一个列表，每个元素为时间范围内的日期字符串
-    :param start_date: 开始日期字符串
-    :param end_date: 结束日期字符串
+    :param start_date: 开始日期，可以是日期字符串（支持自动检测格式）或时间戳（毫秒）
+    :param end_date: 结束日期，可以是日期字符串（支持自动检测格式）或时间戳（毫秒）
     :param fmt: 日期格式化字符串，默认为 '%Y-%m-%d'
     :return: 日期字符串列表
     """
-    start_dt = parse_datetime(start_date, fmt)
-    end_dt = parse_datetime(end_date, fmt)
-    if start_dt is None or end_dt is None:
+    # 处理开始日期
+    if isinstance(start_date, int):
+        start_ts = start_date
+    else:
+        start_ts = str_to_timestamp(start_date)
+    if start_ts is None:
         return []
-    
+    start_dt = datetime.fromtimestamp(start_ts / 1000)
+
+    # 处理结束日期
+    if isinstance(end_date, int):
+        end_ts = end_date
+    else:
+        end_ts = str_to_timestamp(end_date)
+    if end_ts is None:
+        return []
+    end_dt = datetime.fromtimestamp(end_ts / 1000)
+
+    # 生成日期范围
     date_range = []
     current_dt = start_dt
     while current_dt <= end_dt:
         date_range.append(current_dt.strftime(fmt))
         current_dt += timedelta(days=1)
     return date_range
-
 
 
 def get_timestamp_range_by_date(date_str: str, fmt: str = '%Y-%m-%d', unit: str = 'ms') -> Optional[tuple]:
@@ -158,20 +174,21 @@ def get_timestamp_range_by_date(date_str: str, fmt: str = '%Y-%m-%d', unit: str 
     try:
         # 解析日期字符串为datetime对象
         date_dt = datetime.strptime(date_str, fmt)
-        
+
         # 生成当天0点的datetime对象
         start_dt = date_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        
+
         # 生成当天23:59:59的datetime对象
         end_dt = date_dt.replace(hour=23, minute=59, second=59, microsecond=59)
-        
+
         # 转换为时间戳
         start_timestamp = datetime_to_timestamp(start_dt, unit)
         end_timestamp = datetime_to_timestamp(end_dt, unit)
-        
+
         return start_timestamp, end_timestamp
     except ValueError:
         return None
+
 
 if __name__ == '__main__':
     # 示例用法
@@ -183,3 +200,4 @@ if __name__ == '__main__':
     print("时区转换:", format_datetime(convert_timezone(datetime(2023, 1, 1))))
     print("日期范围:", get_date_range("2023-01-01", "2023-01-10"))
     print("日期转时间戳范围:", get_timestamp_range_by_date("2023-01-01"))
+    print("时间字符串转换时间戳", str_to_timestamp("2023-01-01"))
