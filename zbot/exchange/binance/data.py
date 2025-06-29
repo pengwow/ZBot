@@ -9,6 +9,7 @@ import numpy as np
 import aiohttp
 import asyncio
 import ccxt
+from tqdm import tqdm
 from io import BytesIO
 import ssl
 import certifi
@@ -128,6 +129,43 @@ class History(object):
         if missing_timestamps:
             print(f"警告: 检测到{len(missing_timestamps)}个缺失的K线数据点")
             
+        # 转换列名为大写以兼容Backtesting.py
+        df = df.rename(columns={
+            'open': 'Open',
+            'high': 'High',
+            'low': 'Low',
+            'close': 'Close',
+            'volume': 'Volume'
+        })
+        
+        # 设置datetime索引
+        df['datetime'] = pd.to_datetime(df['open_time'], unit='ms')
+        df.set_index('datetime', inplace=True)
+        
+        return df
+        
+        # 数据清理
+        # 1. 去除重复数据
+        df = df.drop_duplicates(subset=['open_time'], keep='last')
+        
+        # 2. 检查并处理缺失值
+        df = df.dropna()
+        
+        # 3. 确保时间序列连续
+        expected_interval = self._get_interval_ms(timeframe)
+        all_timestamps = pd.date_range(
+            start=pd.to_datetime(df['open_time'].min(), unit='ms'),
+            end=pd.to_datetime(df['open_time'].max(), unit='ms'),
+            freq=f'{expected_interval//1000}S'
+        ).astype(np.int64) // 10**6  # 转换为毫秒级时间戳
+        
+        # 找出缺失的时间戳
+        existing_timestamps = set(df['open_time'])
+        missing_timestamps = [ts for ts in all_timestamps if ts not in existing_timestamps]
+        
+        if missing_timestamps:
+            print(f"警告: 检测到{len(missing_timestamps)}个缺失的K线数据点")
+            
         return df
 
     def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500):
@@ -180,9 +218,10 @@ class History(object):
                     **candle_data
                 )
 
-    def download_from_archive(self, symbol, timeframe, candle_type, start_date, end_date):
+    def download_from_archive(self, symbol, timeframe, candle_type, start_date, end_date, progress_queue=None):
         date_range = get_date_range(start_date, end_date)
-        for date in date_range:
+        total = len(date_range)
+        for i, date in enumerate(tqdm(date_range, desc=f"Downloading {symbol} {timeframe} data", total=total)):
             res = asyncio.run(self.get_daily_klines(
                 symbol, timeframe, candle_type, date))
             if res is not None and not res.empty:
@@ -212,7 +251,12 @@ class History(object):
 
                 if bulk_data:
                     Candle.bulk_create(bulk_data)
-            print(res.head())
+            # print(res.head())
+            if progress_queue:
+                progress_queue.put((i + 1, total))  # 发送当前进度和总数
+        if progress_queue:
+            progress_queue.put(None)  # 发送完成信号
+        return date_range
 
     @staticmethod
     def get_url_by_candle_type(candle_type):
@@ -282,6 +326,23 @@ class History(object):
         return None
 
 
+from multiprocessing import Process, Queue
+import time
+
+
+def monitor_progress(queue, total):
+    """监控进度的独立进程"""
+    from tqdm import tqdm
+    pbar = tqdm(total=total, desc="整体下载进度")
+    while True:
+        item = queue.get()
+        if item is None:  # 收到结束信号
+            break
+        current, total = item
+        pbar.update(current - pbar.n)  # 更新进度条
+    pbar.close()
+
+
 if __name__ == '__main__':
     from zbot.common.config import read_config
     config = read_config('BINANCE')
@@ -308,4 +369,35 @@ if __name__ == '__main__':
     # h.download_from_archive('BTCUSDT', '15m', 'futures', '2024-10-27')
     # res = h.get_zip_url('BTCUSDT', '15m', 'spot', '2024-10-27')
     # print(res)
-    h.load_and_clean_data('BTCUSDT', '15m','2024-10-27','2024-10-28')
+    # 示例：使用多进程下载并监控进度
+    start_date = '2024-10-27'
+    end_date = '2024-10-28'
+    
+    # 创建进度队列
+    progress_queue = Queue()
+    
+    # 获取日期范围计算总数
+    date_range = get_date_range(start_date, end_date)
+    total_dates = len(date_range)
+    
+    # 启动下载进程
+    download_process = Process(
+        target=h.download_from_archive,
+        args=('BTCUSDT', '15m', 'futures', start_date, end_date),
+        kwargs={'progress_queue': progress_queue}
+    )
+    download_process.start()
+    
+    # 启动进度监控进程
+    monitor_process = Process(
+        target=monitor_progress,
+        args=(progress_queue, total_dates)
+    )
+    monitor_process.start()
+    
+    # 等待完成
+    download_process.join()
+    monitor_process.join()
+    print("下载完成!")
+    
+    # h.load_and_clean_data('BTCUSDT', '15m','2024-10-27','2024-10-28')

@@ -1,8 +1,11 @@
 pandas==2.2.3
-peewee==3.18.1
+pandas_ta==0.3.14b0
+peewee==3.18.1  # ORM
 requests==2.32.3
 fastapi==0.115.12
-ccxt==4.4.82
+ccxt==4.4.82 
 certifi==2024.2.2
-pytz==2024.1
+pytz==2024.1    # 时区
 pyyaml==6.0.2
+tqdm==4.67.1  # 进度条
+backtesting==0.6.4  # 回测

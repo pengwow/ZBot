@@ -3,17 +3,37 @@ import importlib
 
 
 class Exchange(ABC):
-    def __init__(self, exchange_name, api_key, secret_key, proxy_url, testnet=False):
+    def __init__(self, exchange_name, api_key, secret_key, trading_mode, proxy_url, testnet=False):
         self.exchange_name = exchange_name
         self.api_key = api_key
         self.secret_key = secret_key
         self.proxy_url = proxy_url
+        self.trading_mode = trading_mode
         self.testnet = testnet
 
-    @abstractmethod
-    def download_data(self, *args, **kwargs):
-        pass
+    # @abstractmethod
+    # def download_data(self, *args, **kwargs):
+    #     pass
 
+    # @abstractmethod
+    # def get_account_balance(self, *args, **kwargs):
+    #     pass
+
+    # @abstractmethod
+    # def get_order(self, *args, **kwargs):
+    #     pass
+
+    # @abstractmethod
+    # def get_orders(self, *args, **kwargs):
+    #     pass
+
+    # @abstractmethod
+    # def create_order(self, *args, **kwargs):
+    #     pass
+
+    # @abstractmethod
+    # def cancel_order(self, *args, **kwargs):
+    #     pass
 
 class ExchangeFactory:
     @staticmethod
@@ -27,6 +47,7 @@ class ExchangeFactory:
                 exchange_name=exchange_name,
                 api_key=config.get('api_key'),
                 secret_key=config.get('secret_key'),
+                trading_mode=config.get('trading_mode'),
                 proxy_url=config.get('proxy_url'),
                 testnet=config.get('testnet', False)
             )

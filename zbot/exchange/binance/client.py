@@ -11,7 +11,7 @@ class BinanceExchange(Exchange):
     """
     定义 BinanceExchange 类，继承自 Exchange 类，用于与 Binance 交易所进行交互
     """
-    def __init__(self, exchange_name='binance', api_key=None, secret_key=None, proxy_url=None, candle_type='spot', testnet=False):
+    def __init__(self, exchange_name='binance', api_key=None, secret_key=None, trading_mode='spot', proxy_url=None, testnet=False):
         """
         初始化方法，用于创建 Binance 交易所客户端实例
         :param exchange_name: 交易所名称
@@ -21,7 +21,7 @@ class BinanceExchange(Exchange):
         :param testnet: 是否使用测试网络，默认为 False
         """
         # 调用父类的初始化方法
-        super().__init__(exchange_name, api_key, secret_key, testnet)
+        super().__init__(exchange_name, api_key, secret_key, trading_mode, proxy_url, testnet)
         # 创建 ccxt 的 binance 交易所实例
         self.exchange = ccxt.binance({
             'apiKey': api_key,
@@ -47,7 +47,7 @@ class BinanceExchange(Exchange):
             'close_time', 'quote_volume', 'count', 'taker_buy_volume',
             'taker_buy_quote_volume', 'ignore'
         ]
-        self.candle_type = candle_type
+        self.trading_mode = trading_mode
 
     def prase_ohlcv_custom(self, ohlcv, market):
         """
@@ -80,7 +80,7 @@ class BinanceExchange(Exchange):
             ignore=candle[11]
         )
 
-    def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500, candle_type=None):
+    def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500, trading_mode=None, progress_queue=None):
         """
         下载 K 线数据的方法
         :param symbol: 交易对符号
@@ -106,7 +106,8 @@ class BinanceExchange(Exchange):
                 # 从历史归档地址下载历史数据
                 history = History(self)
                 res = history.download_from_archive(
-                    symbol, interval, candle_type or self.candle_type, start_time, end_time)
+                    symbol, interval, trading_mode or self.trading_mode, start_time, end_time, progress_queue)
+                return res
             else:
                 h = History(self)
                 res = h.download_data(symbol, interval, start_time, end_time, limit)
