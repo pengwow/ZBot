@@ -1,3 +1,4 @@
+import pytz
 import time
 from datetime import datetime, timedelta
 from typing import Optional, Union
@@ -12,7 +13,7 @@ def timestamp_to_datetime(timestamp: Union[int, float, str], unit: str = 'ms', t
     :return: datetime对象或None
     """
     try:
-        import pytz
+
         timestamp = float(timestamp)
         if unit == 'ms':
             timestamp /= 1000
@@ -49,6 +50,19 @@ def format_datetime(dt: Optional[datetime] = None, fmt: str = '%Y-%m-%d %H:%M:%S
     if dt is None:
         dt = datetime.now()
     return dt.strftime(fmt)
+
+def str_to_timestamp(datetime_str: str, fmt: str = '%Y-%m-%d %H:%M:%S', unit: str = 'ms') -> Optional[int]:
+    """
+    将时间字符串转换为时间戳
+    :param datetime_str: 时间字符串，可能是 %Y-%m-%d 只有日期，或者 %Y-%m-%d %H:%M:%S 包含时间
+    :param fmt: 格式化字符串，默认为 '%Y-%m-%d %H:%M:%S'
+    :param unit: 时间单位，'ms'表示毫秒，'s'表示秒
+    :return: 时间戳或None
+    """
+    dt = parse_datetime(datetime_str, fmt)
+    if dt is None:
+        return None
+    return datetime_to_timestamp(dt, unit)
 
 
 def parse_datetime(datetime_str: str, fmt: str = '%Y-%m-%d %H:%M:%S') -> Optional[datetime]:

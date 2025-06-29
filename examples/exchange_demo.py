@@ -11,7 +11,7 @@ exchange = ExchangeFactory.create_exchange('BINANCE', config)
 if exchange:
     print(f"成功加载{exchange.exchange_name}交易所模块")
     candles = exchange.download_data(
-        symbol='BTC/USDT', interval='1m', limit=10)
+        symbol='BTC/USDT', interval='1m', limit=10, start_time='2024-10-27', end_time='2024-10-28')
     print(f"下载完成，共获取{len(candles)}条K线数据")
 else:
     print("交易所模块加载失败")

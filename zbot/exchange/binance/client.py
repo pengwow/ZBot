@@ -3,28 +3,45 @@ from datetime import datetime
 from zbot.exchange.exchange import Exchange
 from zbot.exchange.binance.models import Candle
 from zbot.exchange.binance.data import History
-from zbot.utils.dateutils import format_datetime
+from zbot.utils.dateutils import str_to_timestamp
 import time
 
 
 class BinanceExchange(Exchange):
-    def __init__(self, exchange_name, api_key, secret_key, proxy_url, testnet=False):
+    """
+    定义 BinanceExchange 类，继承自 Exchange 类，用于与 Binance 交易所进行交互
+    """
+    def __init__(self, exchange_name='binance', api_key=None, secret_key=None, proxy_url=None, testnet=False):
+        """
+        初始化方法，用于创建 Binance 交易所客户端实例
+        :param exchange_name: 交易所名称
+        :param api_key: API 密钥
+        :param secret_key: 密钥
+        :param proxy_url: 代理 URL
+        :param testnet: 是否使用测试网络，默认为 False
+        """
+        # 调用父类的初始化方法
         super().__init__(exchange_name, api_key, secret_key, testnet)
+        # 创建 ccxt 的 binance 交易所实例
         self.exchange = ccxt.binance({
             'apiKey': api_key,
             'secret': secret_key,
             'enableRateLimit': True,
             'options': {'defaultType': 'spot'},
         })
+        # 如果提供了代理 URL，则设置代理
         if proxy_url:
             self.exchange.proxies = {
                 'https': proxy_url,
                 'http': proxy_url
             }
+        # 如果使用测试网络，则开启沙箱模式
         if testnet:
             self.exchange.set_sandbox_mode(True)
+        # 设置自定义的 ohlcv 解析方法
         self.exchange.parse_ohlcv = self.prase_ohlcv_custom
 
+        # 定义 K 线数据的字段名称
         self.candle_names = [
             'open_time', 'open', 'high', 'low', 'close', 'volume',
             'close_time', 'quote_volume', 'count', 'taker_buy_volume',
@@ -32,10 +49,21 @@ class BinanceExchange(Exchange):
         ]
 
     def prase_ohlcv_custom(self, ohlcv, market):
+        """
+        自定义的 ohlcv 解析方法，当前直接返回原始数据
+        :param ohlcv: K 线数据
+        :param market: 市场信息
+        :return: 解析后的 K 线数据
+        """
         return ohlcv
 
     @staticmethod
     def format_candle(candle: list) -> dict:
+        """
+        静态方法，用于将 K 线数据列表格式化为字典
+        :param candle: K 线数据列表
+        :return: 格式化后的 K 线数据字典
+        """
         return dict(
             open_time=candle[0],
             open=candle[1],
@@ -52,114 +80,50 @@ class BinanceExchange(Exchange):
         )
 
     def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500):
+        """
+        下载 K 线数据的方法
+        :param symbol: 交易对符号
+        :param interval: 时间间隔，如 '1m', '1h' 等
+        :param start_time: 开始时间，格式为 '2025-01-01 10:00:00' 或 '2025-01-01'，默认为 None
+        :param end_time: 结束时间，格式为 '2025-01-01 10:00:00' 或 '2025-01-01'，默认为 None
+        :param limit: 每次获取数据的最大条数，默认为 500
+        :return: 保存到数据库的 K 线数据列表
+        """
+        # 解析时间参数
+        if start_time:
+            start_time = str_to_timestamp(start_time)
+        if end_time:
+            end_time = str_to_timestamp(end_time)
+        # 如果提供了开始时间和结束时间
         if start_time and end_time:
-            current_time = int(time.time() * 1000)  # 获取当前时间戳(毫秒)
-            thirty_days_ago = current_time - 30 * \
-                24 * 60 * 60 * 1000  # 30天前的时间戳(毫秒)
+            # 获取当前时间戳(毫秒)
+            current_time = int(time.time() * 1000)
+            # 计算 30 天前的时间戳(毫秒)
+            thirty_days_ago = current_time - 30 * 24 * 60 * 60 * 1000
+            # 如果开始时间早于 30 天前，则从历史归档地址下载数据
             if start_time < thirty_days_ago:
                 # 从历史归档地址下载历史数据
                 history = History(self)
                 res = history.download_from_archive(
                     symbol, interval, start_time, end_time)
             else:
-                # 将时间戳转换为 datetime 对象
-                start_datetime = datetime.fromtimestamp(start_time / 1000)
-                end_datetime = datetime.fromtimestamp(end_time / 1000)
-                # 计算时间差
-                delta = end_datetime - start_datetime
-                # 计算需要的总条数
-                total_minutes = delta.total_seconds() / 60
-                interval_minutes = self.get_interval_minutes(interval)
-                total_bars = int(total_minutes / interval_minutes) + 1
-                # 如果总条数超过限制，则分多次获取
-                if total_bars > limit:
-                    all_ohlcv = []
-                    current_time = start_time
-                    while current_time < end_time:
-                        next_time = current_time + limit * interval_minutes * 60 * 1000
-                        if next_time > end_time:
-                            next_time = end_time
-                        ohlcv = self.exchange.fetch_ohlcv(
-                            symbol, interval, current_time, min(limit, total_bars), params={})
-                        if not ohlcv:
-                            break
-                        all_ohlcv.extend(ohlcv)
-                        current_time = ohlcv[-1][0] + 1
-                        total_bars -= len(ohlcv)
-                        if total_bars <= 0:
-                            break
-                    res = all_ohlcv
-                else:
-                    res = self.exchange.fetch_ohlcv(
-                        symbol, interval, start_time, limit, params={})
+                h = History(self)
+                res = h.download_data(symbol, interval, start_time, end_time, limit)
         else:
-            res = self.exchange.fetch_ohlcv(symbol, interval, limit=limit)
+            # 没有提供开始时间和结束时间，获取最新的 K 线数据
+            res = self.exchange.fetch_ohlcv(symbol, interval, since=None, limit=limit)
 
+        # 初始化批量数据列表
         bulk_data = []
+        # 遍历获取到的 K 线数据，将其转换为 Candle 对象并添加到批量数据列表中
         for i in res:
             bulk_data.append(
                 Candle(symbol=symbol, timeframe=interval, **self.format_candle(i)))
 
+        # 如果批量数据列表不为空，则批量创建 Candle 对象
         if bulk_data:
             Candle.bulk_create(bulk_data)
+        # 返回批量数据列表
         return bulk_data
-        # if start_time and end_time:
-        #     # 将时间戳转换为 datetime 对象
-        #     start_datetime = datetime.fromtimestamp(start_time / 1000)
-        #     end_datetime = datetime.fromtimestamp(end_time / 1000)
-        #     # 计算时间差
-        #     delta = end_datetime - start_datetime
-        #     # 计算需要的总条数
-        #     total_minutes = delta.total_seconds() / 60
-        #     interval_minutes = self.get_interval_minutes(interval)
-        #     total_bars = int(total_minutes / interval_minutes) + 1
-        #     # 如果总条数超过限制，则分多次获取
-        #     if total_bars > limit:
-        #         all_ohlcv = []
-        #         current_time = start_time
-        #         while current_time < end_time:
-        #             next_time = current_time + limit * interval_minutes * 60 * 1000
-        #             if next_time > end_time:
-        #                 next_time = end_time
-        #             ohlcv = self.exchange.fetch_ohlcv(symbol, interval, current_time, min(limit, total_bars), params={})
-        #             if not ohlcv:
-        #                 break
-        #             all_ohlcv.extend(ohlcv)
-        #             current_time = ohlcv[-1][0] + 1
-        #             total_bars -= len(ohlcv)
-        #             if total_bars <= 0:
-        #                 break
-        #         res = all_ohlcv
-        #     else:
-        #         res = self.exchange.fetch_ohlcv(symbol, interval, start_time, limit, params={})
-        # else:
-        #     res = self.exchange.fetch_ohlcv(symbol, interval, limit=limit)
 
-        # bulk_data = []
-        # for i in res:
-        #     bulk_data.append(Candle(symbol=symbol, timeframe=interval, **self.format_candle(i)))
-
-        # if bulk_data:
-        #     Candle.bulk_create(bulk_data)
-        # return bulk_data
-
-    @staticmethod
-    def get_interval_minutes(interval):
-        interval_map = {
-            '1m': 1,
-            '3m': 3,
-            '5m': 5,
-            '15m': 15,
-            '30m': 30,
-            '1h': 60,
-            '2h': 120,
-            '4h': 240,
-            '6h': 360,
-            '8h': 480,
-            '12h': 720,
-            '1d': 1440,
-            '3d': 4320,
-            '1w': 10080,
-            '1M': 43200
-        }
-        return interval_map.get(interval, 1)
+    
