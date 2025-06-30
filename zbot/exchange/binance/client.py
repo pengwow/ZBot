@@ -111,21 +111,6 @@ class BinanceExchange(Exchange):
             else:
                 h = History(self)
                 res = h.download_data(symbol, interval, start_time, end_time, limit)
-        else:
-            # 没有提供开始时间和结束时间，获取最新的 K 线数据
-            res = self.exchange.fetch_ohlcv(symbol, interval, since=None, limit=limit)
-
-        # 初始化批量数据列表
-        bulk_data = []
-        # 遍历获取到的 K 线数据，将其转换为 Candle 对象并添加到批量数据列表中
-        for i in res:
-            bulk_data.append(
-                Candle(symbol=symbol, timeframe=interval, **self.format_candle(i)))
-
-        # 如果批量数据列表不为空，则批量创建 Candle 对象
-        if bulk_data:
-            Candle.bulk_create(bulk_data)
-        # 返回批量数据列表
-        return bulk_data
+        return
 
     

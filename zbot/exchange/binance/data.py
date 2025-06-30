@@ -175,6 +175,73 @@ class History(object):
             symbol, interval, None, limit, params={})
         all_ohlcv.extend(ohlcv)
         self._process_ohlcv_data(symbol, interval, ohlcv)
+        # 查询数据库中已存在的K线时间戳
+        existing_times = set()
+        if Candle.table_exists():
+            # 确保数据库连接已打开
+            from zbot.services.db import database
+            database.open_connection()
+            
+            # 查询该交易对和时间间隔下的所有已有记录
+            existing_records = Candle.select(Candle.open_time).where(
+                (Candle.symbol == symbol) & 
+                (Candle.timeframe == interval)
+            )
+            existing_times = {record.open_time for record in existing_records}
+
+        bulk_create = []
+        bulk_update = []
+
+        # 遍历获取到的K线数据
+        for candle_data in ohlcv:
+            formatted_data = self.format_candle(candle_data)
+            open_time = formatted_data['open_time']
+            
+            # 检查记录是否已存在
+            if open_time in existing_times:
+                # 准备更新数据
+                bulk_update.append({
+                    'symbol': symbol,
+                    'timeframe': interval,
+                    'open_time': open_time,
+                    'open': formatted_data['open'],
+                    'high': formatted_data['high'],
+                    'low': formatted_data['low'],
+                    'close': formatted_data['close'],
+                    'volume': formatted_data['volume'],
+                    'close_time': formatted_data['close_time'],
+                    'quote_volume': formatted_data['quote_volume'],
+                })
+            else:
+                # 准备创建新记录
+                bulk_create.append(
+                    Candle(symbol=symbol, timeframe=interval, **formatted_data)
+                )
+
+        # 执行批量操作
+        if bulk_create:
+            Candle.bulk_create(bulk_create)
+            print(f"Created {len(bulk_create)} new candle records")
+
+        if bulk_update:
+            # 使用peewee的批量更新方式
+            from peewee import Case
+            update_query = Candle.update(
+                open=Case(Candle.open_time, [(item['open_time'], item['open']) for item in bulk_update]),
+                high=Case(Candle.open_time, [(item['open_time'], item['high']) for item in bulk_update]),
+                low=Case(Candle.open_time, [(item['open_time'], item['low']) for item in bulk_update]),
+                close=Case(Candle.open_time, [(item['open_time'], item['close']) for item in bulk_update]),
+                volume=Case(Candle.open_time, [(item['open_time'], item['volume']) for item in bulk_update]),
+                close_time=Case(Candle.open_time, [(item['open_time'], item['close_time']) for item in bulk_update]),
+                quote_volume=Case(Candle.open_time, [(item['open_time'], item['quote_volume']) for item in bulk_update])
+            ).where(
+                (Candle.symbol == symbol) & 
+                (Candle.timeframe == interval) & 
+                (Candle.open_time << [item['open_time'] for item in bulk_update])
+            )
+            update_count = update_query.execute()
+            print(f"Updated {update_count} existing candle records")
+
         return all_ohlcv
 
     def _get_interval_ms(self, interval):
