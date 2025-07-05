@@ -3,7 +3,7 @@ import yaml
 
 base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def read_config(exchange='', file_path=''):
+def read_config(key='', file_path='') -> dict:
     """
     读取配置文件内容
     
@@ -13,8 +13,8 @@ def read_config(exchange='', file_path=''):
     try:
         file_path = file_path or os.path.join(base_path, 'config.yml')
         with open(file_path, 'r', encoding='utf-8') as file:
-            if exchange:
-                return yaml.safe_load(file)['EXCHANGES'][exchange]
+            if key:
+                return yaml.safe_load(file)[key]
             return yaml.safe_load(file)
     except FileNotFoundError:
         print(f"错误：未找到配置文件 {file_path}")
