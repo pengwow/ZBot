@@ -6,7 +6,7 @@ exchange_name = 'binance'
 config = read_config('exchange').get(exchange_name)
 
 # 使用工厂类动态创建交易所实例
-exchange = ExchangeFactory.create_exchange(exchange_name, config)
+exchange = ExchangeFactory.create_exchange(exchange_name)
 
 # 调用下载数据方法
 if exchange:

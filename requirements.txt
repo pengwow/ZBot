@@ -12,3 +12,6 @@ backtesting==0.6.4  # 回测
 streamlit==1.46.1
 pyjwt==2.10.1
 click==8.2.1  # 命令行
+pytest==8.4.1
+websocket==0.2.1
+dash==3.1.1

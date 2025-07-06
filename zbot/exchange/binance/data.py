@@ -1,7 +1,6 @@
 # coding=utf-8
 import os
 from datetime import datetime, timedelta
-from tkinter import N
 import zipfile
 from numpy.random import f
 import pandas as pd
@@ -13,7 +12,7 @@ from tqdm import tqdm
 from io import BytesIO
 import ssl
 import certifi
-from zbot.exchange.binance.models import Candle
+# 延迟导入以避免循环依赖
 from zbot.utils.dateutils import get_date_range
 
 
@@ -94,6 +93,7 @@ class History(object):
             end_ts = float('inf')
         
         # 查询数据库
+        from zbot.exchange.binance.models import Candle
         query = Candle.select().where(
             (Candle.symbol == symbol) &
             (Candle.timeframe == timeframe) &
@@ -177,6 +177,7 @@ class History(object):
         self._process_ohlcv_data(symbol, interval, ohlcv)
         # 查询数据库中已存在的K线时间戳
         existing_times = set()
+        from zbot.exchange.binance.models import Candle
         if Candle.table_exists():
             # 确保数据库连接已打开
             from zbot.services.db import database
@@ -267,6 +268,7 @@ class History(object):
         for candle in ohlcv:
             candle_data = self.format_candle(candle)
             # 根据 symbol、open_time 和 interval 查询是否已存在记录
+            from zbot.exchange.binance.models import Candle
             existing_candle = Candle.select().where(
                 (Candle.symbol == symbol) &
                 (Candle.timeframe == interval) &
@@ -286,6 +288,7 @@ class History(object):
                 )
 
     def download_from_archive(self, symbol, timeframe, candle_type, start_date, end_date, progress_queue=None):
+        from zbot.exchange.binance.models import Candle
         date_range = get_date_range(start_date, end_date)
         total = len(date_range)
         for i, date in enumerate(tqdm(date_range, desc=f"Downloading {symbol} {timeframe} data", total=total)):
@@ -318,10 +321,9 @@ class History(object):
 
                 if bulk_data:
                     Candle.bulk_create(bulk_data)
-            # print(res.head())
             if progress_queue:
                 # progress_queue.put((i + 1, total))  # 发送当前进度和总数
-                progress_queue.put((i + 1) / total)
+                progress_queue.put({'symbol':symbol, 'date':date, 'progress': (i + 1) / total})
         if progress_queue:
             progress_queue.put(None)  # 发送完成信号
         return date_range

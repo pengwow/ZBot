@@ -1,15 +1,10 @@
-from abc import ABC, abstractmethod
+
 import importlib
 
+from zbot.common.config import read_config
 
-class Exchange(ABC):
-    def __init__(self, exchange_name, api_key, secret_key, trading_mode, proxy_url, testnet=False):
-        self.exchange_name = exchange_name
-        self.api_key = api_key
-        self.secret_key = secret_key
-        self.proxy_url = proxy_url
-        self.trading_mode = trading_mode
-        self.testnet = testnet
+
+
 
     # @abstractmethod
     # def download_data(self, *args, **kwargs):
@@ -35,9 +30,11 @@ class Exchange(ABC):
     # def cancel_order(self, *args, **kwargs):
     #     pass
 
+
 class ExchangeFactory:
     @staticmethod
-    def create_exchange(exchange_name, config):
+    def create_exchange(exchange_name, config: dict = {}):
+        config = config or read_config('exchange').get(exchange_name)
         module_name = f"zbot.exchange.{exchange_name.lower()}"
         class_name = f"{exchange_name.capitalize()}Exchange"
         try:
@@ -52,6 +49,6 @@ class ExchangeFactory:
                 testnet=config.get('testnet', False)
             )
         except ImportError:
-            raise ValueError(f"Exchange {exchange_name} is not supported")
+            raise ValueError(f"Exchange {exchange_name} is not supported {module_name}")
         except AttributeError:
             raise ValueError(f"Class {class_name} not found in {module_name}")

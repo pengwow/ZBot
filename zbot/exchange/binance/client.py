@@ -1,6 +1,6 @@
 import ccxt
 from datetime import datetime
-from zbot.exchange.exchange import Exchange
+from zbot.exchange import Exchange
 from zbot.exchange.binance.models import Candle
 from zbot.exchange.binance.data import History
 from zbot.utils.dateutils import str_to_timestamp
@@ -80,7 +80,7 @@ class BinanceExchange(Exchange):
             ignore=candle[11]
         )
 
-    def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500, trading_mode=None, progress_queue=None):
+    def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500, candle_type=None, progress_queue=None):
         """
         下载 K 线数据的方法
         :param symbol: 交易对符号
@@ -88,6 +88,7 @@ class BinanceExchange(Exchange):
         :param start_time: 开始时间，格式为 '2025-01-01 10:00:00' 或 '2025-01-01'，默认为 None
         :param end_time: 结束时间，格式为 '2025-01-01 10:00:00' 或 '2025-01-01'，默认为 None
         :param limit: 每次获取数据的最大条数，默认为 500
+        :param candle_type: 交易模式，spot 或 future，默认为 None
         :return: 保存到数据库的 K 线数据列表
         """
         # 解析时间参数
@@ -106,7 +107,7 @@ class BinanceExchange(Exchange):
                 # 从历史归档地址下载历史数据
                 history = History(self)
                 res = history.download_from_archive(
-                    symbol, interval, trading_mode or self.trading_mode, start_time, end_time, progress_queue)
+                    symbol, interval, candle_type or self.trading_mode, start_time, end_time, progress_queue)
                 return res
             else:
                 h = History(self)
