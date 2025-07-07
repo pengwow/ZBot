@@ -114,3 +114,17 @@ class BacktestEngine:
         :return: 优化结果
         """
         return self.backtest.optimize(** parameter_ranges, **kwargs)
+
+if __name__ == '__main__':
+    # 示例数据
+    data = pd.read_sql_query("SELECT * FROM kline_data", con=engine)
+    data['Date'] = pd.to_datetime(data['Date'])
+    data.set_index('Date', inplace=True)
+
+    # 运行回测
+    engine = BacktestEngine(BaseStrategy, data)
+    results = engine.run()
+    print(results)
+
+    # 绘制回测结果
+    engine.plot()

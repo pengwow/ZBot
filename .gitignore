@@ -6,3 +6,4 @@
 zbot/zbot.db
 zbot/config.yml
 zbot/data/spot/zbot.db
+temp/
