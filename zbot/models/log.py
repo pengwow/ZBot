@@ -1,6 +1,6 @@
 import peewee
 from enum import Enum
-from zbot.services.db import database
+from zbot.models.log import database
 
 class LogType(str, Enum):
     """日志类型枚举

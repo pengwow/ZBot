@@ -129,6 +129,7 @@ def calculate_maintenance_margin_rate(
     return max(round(maintenance_margin_rate, 2), 0.0)
 
 
+
 # 示例计算
 if __name__ == "__main__":
     # 用户提供的实际数据
