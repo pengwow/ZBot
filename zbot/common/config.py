@@ -23,8 +23,17 @@ def read_config(key='', file_path='') -> dict:
         print(f"错误：解析配置文件 {file_path} 时出错 - {e}")
         return {}
 
-if __name__ == '__main__':
+def write_config(data, file_path=''):
+    """
+    写入配置文件内容
     
-    config = read_config('BINANCE')
-    print(config)
+    :param data: 要写入的配置数据
+    :param file_path: 配置文件路径，默认为 'config.yml'
+    """
+    try:
+        file_path = file_path or os.path.join(base_path, 'config.yml')
+        with open(file_path, 'w', encoding='utf-8') as file:
+            yaml.dump(data, file, default_flow_style=False)
+    except Exception as e:
+        print(f"错误：写入配置文件 {file_path} 时出错 - {e}")
 

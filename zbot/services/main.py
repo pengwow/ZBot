@@ -1,6 +1,10 @@
+from tkinter import N
 import click
-from zbot.common.config import read_config
+from zbot.common.config import read_config, write_config
 from zbot.exchange.exchange import ExchangeFactory
+import yaml
+from pathlib import Path
+import os
 
 
 @click.group()
@@ -15,6 +19,7 @@ def cli():
 @click.option('--start', default='2025-01-01', help='开始日期 %Y-%m-%d 例如 2025-01-01')
 @click.option('--end', default='2025-01-31', help='结束日期 %Y-%m-%d 例如 2025-01-31')
 def download_data(exchange, symbol, interval, start, end):
+    """下载K线数据"""
     click.echo(f"下载数据")
     click.echo(f"交易商: {exchange}")
     click.echo(f"交易对: {symbol}")
@@ -25,6 +30,55 @@ def download_data(exchange, symbol, interval, start, end):
     exchange = ExchangeFactory.create_exchange(exchange, config)
     candles = exchange.download_data(symbol=symbol, interval=interval, start_time=start, end_time=end)
     click.echo(f"下载完成，共获取{len(candles)}天K线数据")
+
+
+@cli.command()
+@click.option('--exchange', default='binance', help='交易商名')
+@click.option('--api_key', default='', help='api key')
+@click.option('--secret_key', default='', help='secret key')
+@click.option('--proxy_url', default='', help='代理url')
+@click.option('--trading_mode', default='spot', help='交易模式: spot现货, futures合约')
+def config(exchange, api_key, secret_key, proxy_url, trading_mode):
+    """
+    创建或修改交易所配置信息
+
+    先从配置文件读取现有配置，更新或添加指定交易所的配置参数，然后写回文件。
+
+    参数:
+        exchange (str): 交易所名称
+        api_key (str): API密钥
+        secret_key (str): 密钥
+        proxy_url (str): 代理URL
+        trading_mode (str): 交易模式
+    """
+    click.echo(f"配置交易商: {exchange}")
+    click.echo(f"api key: {api_key}")
+    click.echo(f"secret key: {secret_key}")
+    click.echo(f"代理url: {proxy_url}")
+    click.echo(f"交易模式: {trading_mode}")
+    # 配置文件路径
+    config_path = None
+    # config_path = Path(os.path.dirname(os.path.abspath(__file__))).parent / 'config2.yaml'
+    
+    # 读取现有配置
+    existing_config = read_config(file_path=config_path)
+
+    # 确保exchange配置部分存在并更新
+    exchange_config = existing_config.get('exchange', {})
+    exchange_config['name'] = exchange  # 更新当前选中的交易所名称
+    
+    # 获取当前交易所的配置，不存在则创建新字典
+    current_exchange_config = exchange_config.get(exchange, {})
+    current_exchange_config.update({
+        'api_key': api_key,
+        'secret_key': secret_key,
+        'proxy_url': proxy_url,
+        'trading_mode': trading_mode
+    })
+    exchange_config[exchange] = current_exchange_config
+    existing_config['exchange'] = exchange_config
+    # 将更新后的配置数据写入 yaml 文件
+    write_config(existing_config, file_path=config_path)
 
 
 if __name__ == "__main__":
