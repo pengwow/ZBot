@@ -1,7 +1,7 @@
 import datetime
 from importlib import import_module
 from typing import List, Optional, Any
-from zbot.utils.dateutils import str_to_timestamp
+from zbot.utils.dateutils import str_to_timestamp, timestamp_to_datetime
 
 
 def get_candles_from_db(
@@ -32,14 +32,9 @@ def get_candles_from_db(
         Candle = candle_module.Candle
     except ImportError:
         raise ValueError(f"不支持的交易所: {exchange}")
-    start = str_to_timestamp(start)
-    end = str_to_timestamp(end)
+    start = str_to_timestamp(start, 'us')
+    end = str_to_timestamp(end, 'us')
     # 查询指定条件的K线数据并按时间戳排序
-    ddd = Candle.select().where(
-            (Candle.symbol == symbol)
-            & (Candle.timeframe == timeframe)
-            & Candle.open_time.between(start, end)
-        ).order_by(Candle.open_time)
     candles = list(
         Candle.select().where(
             (Candle.symbol == symbol)
@@ -63,4 +58,4 @@ if __name__ == "__main__":
     candles = get_candles_from_db('binance', "BTC/USDT", "15m", "2025-01-01", "2025-01-03")
     
     for candle in candles:
-        print(candle.timestamp, candle.close)
+        print(timestamp_to_datetime(candle.open_time, 'us'), candle.close)

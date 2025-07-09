@@ -4,19 +4,56 @@ from datetime import datetime, timedelta
 from typing import Optional, Union
 
 
-def timestamp_to_datetime(timestamp: Union[int, float, str], unit: str = 'ms', tz: str = 'UTC') -> Optional[datetime]:
+def timestamp_to_datetime(timestamp: Union[int, float, str], tz: str = 'UTC', unit: Optional[str] = None) -> Optional[datetime]:
     """
-    将时间戳转换为datetime对象
+    将时间戳转换为datetime对象，支持手动指定或自动识别时间单位
+
+    若提供unit参数则使用指定单位，否则根据时间戳位数自动判断：
+    - 10位: 秒
+    - 13位: 毫秒
+    - 16位: 微秒
+    - 19位: 纳秒
+
     :param timestamp: 时间戳，可以是整数、浮点数或字符串
-    :param unit: 时间单位，'ms'表示毫秒，'s'表示秒
     :param tz: 时区，默认为 'UTC'
+    :param unit: 时间单位，可选值为's'(秒), 'ms'(毫秒), 'us'(微秒), 'ns'(纳秒)，若为None则自动识别
     :return: datetime对象或None
     """
     try:
+        # 处理不同类型的timestamp并提取整数部分
+        if isinstance(timestamp, str):
+            # 移除可能的小数部分
+            timestamp_str = timestamp.split('.')[0]
+        else:
+            timestamp_str = str(int(timestamp))
 
+        # 确定时间单位
+        if unit is None:
+            # 根据长度自动判断时间单位
+            length = len(timestamp_str)
+            if length == 10:
+                unit = 's'
+            elif length == 13:
+                unit = 'ms'
+            elif length == 16:
+                unit = 'us'
+            elif length == 19:
+                unit = 'ns'
+            else:
+                return None  # 无法识别的时间戳格式
+        
+        # 验证时间单位有效性
+        if unit not in ['s', 'ms', 'us', 'ns']:
+            return None  # 无效的时间单位
+
+        # 转换为float并根据单位调整
         timestamp = float(timestamp)
         if unit == 'ms':
             timestamp /= 1000
+        elif unit == 'us':
+            timestamp /= 1000000
+        elif unit == 'ns':
+            timestamp /= 1000000000
         tz_obj = pytz.timezone(tz)
         # 先将时间戳转换为带时区的datetime对象，再去除时区信息
         dt = datetime.fromtimestamp(timestamp, tz_obj)
@@ -27,16 +64,31 @@ def timestamp_to_datetime(timestamp: Union[int, float, str], unit: str = 'ms', t
         return None
 
 
-def datetime_to_timestamp(dt: datetime, unit: str = 'ms') -> int:
+def datetime_to_timestamp(dt: datetime, unit: Optional[str] = None) -> int:
     """
-    将datetime对象转换为时间戳
+    将datetime对象转换为时间戳，支持手动指定或使用默认单位
+
+    若提供unit参数则使用指定单位，否则默认使用毫秒(ms)单位
+
     :param dt: datetime对象
-    :param unit: 时间单位，'ms'表示毫秒，'s'表示秒
+    :param unit: 时间单位，可选值为's'(秒), 'ms'(毫秒), 'us'(微秒), 'ns'(纳秒)，若为None则默认使用'ms'
     :return: 时间戳
     """
+    # 设置默认单位为毫秒
+    if unit is None:
+        unit = 'ms'
+        
+    # 验证时间单位有效性
+    if unit not in ['s', 'ms', 'us', 'ns']:
+        raise ValueError(f"无效的时间单位: {unit}，必须是's', 'ms', 'us'或'ns'")
+        
     timestamp = dt.timestamp()
     if unit == 'ms':
         return int(timestamp * 1000)
+    elif unit == 'us':
+        return int(timestamp * 1000000)
+    elif unit == 'ns':
+        return int(timestamp * 1000000000)
     return int(timestamp)
 
 
@@ -56,7 +108,7 @@ def str_to_timestamp(datetime_str: str, unit: str = 'ms') -> Optional[int]:
     """
     将时间字符串转换为时间戳，自动检测日期格式
     :param datetime_str: 时间字符串，支持 '%Y-%m-%d' 或 '%Y-%m-%d %H:%M:%S' 格式
-    :param unit: 时间单位，'ms'表示毫秒，'s'表示秒
+    :param unit: 时间单位，'ms'表示毫秒，'s'表示秒，'us'表示微秒，'ns'表示纳秒
     :return: 时间戳或None
     """
     # 尝试不同格式解析，优先带时间的格式
