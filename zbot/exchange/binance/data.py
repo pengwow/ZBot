@@ -1,4 +1,6 @@
 # coding=utf-8
+import time
+from multiprocessing import Process, Queue
 import os
 from datetime import datetime, timedelta
 import zipfile
@@ -13,7 +15,8 @@ from io import BytesIO
 import ssl
 import certifi
 # 延迟导入以避免循环依赖
-from zbot.utils.dateutils import get_date_range
+from zbot.utils.dateutils import get_date_range, str_to_timestamp
+from zbot.exchange.binance.models import Candle
 
 
 class History(object):
@@ -82,53 +85,47 @@ class History(object):
         :return: 清理后的DataFrame
         """
         # 处理时间参数
-        if start_time:
-            start_ts = start_time if isinstance(start_time, int) else str_to_timestamp(start_time)
-        else:
-            start_ts = 0
-        
-        if end_time:
-            end_ts = end_time if isinstance(end_time, int) else str_to_timestamp(end_time)
-        else:
-            end_ts = float('inf')
-        
         # 查询数据库
-        from zbot.exchange.binance.models import Candle
-        query = Candle.select().where(
-            (Candle.symbol == symbol) &
-            (Candle.timeframe == timeframe) &
-            (Candle.open_time >= start_ts) &
-            (Candle.open_time <= end_ts)
-        ).order_by(Candle.open_time)
-        
+        start = str_to_timestamp(start_time, 'us')
+        end = str_to_timestamp(end_time, 'us')
+        # 查询指定条件的K线数据并按时间戳排序
+        candles = list(
+            Candle.select().where(
+                (Candle.symbol == symbol)
+                & (Candle.timeframe == timeframe)
+                & Candle.open_time.between(start, end)
+            ).order_by(Candle.open_time)
+        )
+
         # 转换为DataFrame
-        df = pd.DataFrame([candle.__data__ for candle in query])
-        
+        df = pd.DataFrame([candle.__data__ for candle in candles])
+
         if df.empty:
             return df
-        
+
         # 数据清理
         # 1. 去除重复数据
         df = df.drop_duplicates(subset=['open_time'], keep='last')
-        
+
         # 2. 检查并处理缺失值
         df = df.dropna()
-        
+
         # 3. 确保时间序列连续
-        expected_interval = self._get_interval_ms(timeframe)
+        expected_interval = self._get_interval_ms(timeframe) * 1000  # 转换为微秒
         all_timestamps = pd.date_range(
-            start=pd.to_datetime(df['open_time'].min(), unit='ms'),
-            end=pd.to_datetime(df['open_time'].max(), unit='ms'),
-            freq=f'{expected_interval//1000}S'
-        ).astype(np.int64) // 10**6  # 转换为毫秒级时间戳
-        
+            start=pd.to_datetime(df['open_time'].min(), unit='us'),
+            end=pd.to_datetime(df['open_time'].max(), unit='us'),
+            freq=f'{expected_interval//1000000}S'  # 转换回秒用于设置频率
+        ).astype(np.int64)  # 转换为微秒级时间戳
+
         # 找出缺失的时间戳
         existing_timestamps = set(df['open_time'])
-        missing_timestamps = [ts for ts in all_timestamps if ts not in existing_timestamps]
-        
+        missing_timestamps = [
+            ts for ts in all_timestamps if ts not in existing_timestamps]
+
         if missing_timestamps:
             print(f"警告: 检测到{len(missing_timestamps)}个缺失的K线数据点")
-            
+
         # 转换列名为大写以兼容Backtesting.py
         df = df.rename(columns={
             'open': 'Open',
@@ -137,35 +134,11 @@ class History(object):
             'close': 'Close',
             'volume': 'Volume'
         })
-        
+
         # 设置datetime索引
         df['datetime'] = pd.to_datetime(df['open_time'], unit='ms')
         df.set_index('datetime', inplace=True)
-        
-        return df
-        
-        # 数据清理
-        # 1. 去除重复数据
-        df = df.drop_duplicates(subset=['open_time'], keep='last')
-        
-        # 2. 检查并处理缺失值
-        df = df.dropna()
-        
-        # 3. 确保时间序列连续
-        expected_interval = self._get_interval_ms(timeframe)
-        all_timestamps = pd.date_range(
-            start=pd.to_datetime(df['open_time'].min(), unit='ms'),
-            end=pd.to_datetime(df['open_time'].max(), unit='ms'),
-            freq=f'{expected_interval//1000}S'
-        ).astype(np.int64) // 10**6  # 转换为毫秒级时间戳
-        
-        # 找出缺失的时间戳
-        existing_timestamps = set(df['open_time'])
-        missing_timestamps = [ts for ts in all_timestamps if ts not in existing_timestamps]
-        
-        if missing_timestamps:
-            print(f"警告: 检测到{len(missing_timestamps)}个缺失的K线数据点")
-            
+
         return df
 
     def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500):
@@ -182,10 +155,10 @@ class History(object):
             # 确保数据库连接已打开
             from zbot.services.db import database
             database.open_connection()
-            
+
             # 查询该交易对和时间间隔下的所有已有记录
             existing_records = Candle.select(Candle.open_time).where(
-                (Candle.symbol == symbol) & 
+                (Candle.symbol == symbol) &
                 (Candle.timeframe == interval)
             )
             existing_times = {record.open_time for record in existing_records}
@@ -197,7 +170,7 @@ class History(object):
         for candle_data in ohlcv:
             formatted_data = self.format_candle(candle_data)
             open_time = formatted_data['open_time']
-            
+
             # 检查记录是否已存在
             if open_time in existing_times:
                 # 准备更新数据
@@ -228,17 +201,25 @@ class History(object):
             # 使用peewee的批量更新方式
             from peewee import Case
             update_query = Candle.update(
-                open=Case(Candle.open_time, [(item['open_time'], item['open']) for item in bulk_update]),
-                high=Case(Candle.open_time, [(item['open_time'], item['high']) for item in bulk_update]),
-                low=Case(Candle.open_time, [(item['open_time'], item['low']) for item in bulk_update]),
-                close=Case(Candle.open_time, [(item['open_time'], item['close']) for item in bulk_update]),
-                volume=Case(Candle.open_time, [(item['open_time'], item['volume']) for item in bulk_update]),
-                close_time=Case(Candle.open_time, [(item['open_time'], item['close_time']) for item in bulk_update]),
-                quote_volume=Case(Candle.open_time, [(item['open_time'], item['quote_volume']) for item in bulk_update])
+                open=Case(Candle.open_time, [
+                          (item['open_time'], item['open']) for item in bulk_update]),
+                high=Case(Candle.open_time, [
+                          (item['open_time'], item['high']) for item in bulk_update]),
+                low=Case(Candle.open_time, [
+                         (item['open_time'], item['low']) for item in bulk_update]),
+                close=Case(Candle.open_time, [
+                           (item['open_time'], item['close']) for item in bulk_update]),
+                volume=Case(Candle.open_time, [
+                            (item['open_time'], item['volume']) for item in bulk_update]),
+                close_time=Case(Candle.open_time, [
+                                (item['open_time'], item['close_time']) for item in bulk_update]),
+                quote_volume=Case(Candle.open_time, [
+                                  (item['open_time'], item['quote_volume']) for item in bulk_update])
             ).where(
-                (Candle.symbol == symbol) & 
-                (Candle.timeframe == interval) & 
-                (Candle.open_time << [item['open_time'] for item in bulk_update])
+                (Candle.symbol == symbol) &
+                (Candle.timeframe == interval) &
+                (Candle.open_time << [item['open_time']
+                 for item in bulk_update])
             )
             update_count = update_query.execute()
             print(f"Updated {update_count} existing candle records")
@@ -323,7 +304,8 @@ class History(object):
                     Candle.bulk_create(bulk_data)
             if progress_queue:
                 # progress_queue.put((i + 1, total))  # 发送当前进度和总数
-                progress_queue.put({'symbol':symbol, 'date':date, 'progress': (i + 1) / total})
+                progress_queue.put(
+                    {'symbol': symbol, 'date': date, 'progress': (i + 1) / total})
         if progress_queue:
             progress_queue.put(None)  # 发送完成信号
         return date_range
@@ -396,10 +378,6 @@ class History(object):
         return None
 
 
-from multiprocessing import Process, Queue
-import time
-
-
 def monitor_progress(queue, total):
     """监控进度的独立进程"""
     from tqdm import tqdm
@@ -442,14 +420,14 @@ if __name__ == '__main__':
     # 示例：使用多进程下载并监控进度
     start_date = '2024-10-27'
     end_date = '2024-10-28'
-    
+
     # 创建进度队列
     progress_queue = Queue()
-    
+
     # 获取日期范围计算总数
     date_range = get_date_range(start_date, end_date)
     total_dates = len(date_range)
-    
+
     # 启动下载进程
     download_process = Process(
         target=h.download_from_archive,
@@ -457,17 +435,17 @@ if __name__ == '__main__':
         kwargs={'progress_queue': progress_queue}
     )
     download_process.start()
-    
+
     # 启动进度监控进程
     monitor_process = Process(
         target=monitor_progress,
         args=(progress_queue, total_dates)
     )
     monitor_process.start()
-    
+
     # 等待完成
     download_process.join()
     monitor_process.join()
     print("下载完成!")
-    
+
     # h.load_and_clean_data('BTCUSDT', '15m','2024-10-27','2024-10-28')

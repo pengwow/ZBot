@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Union
 
 
-def timestamp_to_datetime(timestamp: Union[int, float, str], tz: str = 'UTC', unit: Optional[str] = None) -> Optional[datetime]:
+def timestamp_to_datetime(timestamp: Union[int, float, str], unit: Optional[str] = None, tz: str = 'UTC') -> Optional[datetime]:
     """
     将时间戳转换为datetime对象，支持手动指定或自动识别时间单位
 
@@ -66,17 +66,27 @@ def timestamp_to_datetime(timestamp: Union[int, float, str], tz: str = 'UTC', un
 
 def datetime_to_timestamp(dt: datetime, unit: Optional[str] = None) -> int:
     """
-    将datetime对象转换为时间戳，支持手动指定或使用默认单位
+    将datetime对象转换为时间戳，支持手动指定或自动识别单位
 
-    若提供unit参数则使用指定单位，否则默认使用毫秒(ms)单位
+    若提供unit参数则使用指定单位，否则根据datetime对象的精度自动判断：
+    - 包含微秒且非零: 微秒(us)
+    - 包含毫秒且非零: 毫秒(ms)
+    - 否则: 秒(s)
 
     :param dt: datetime对象
-    :param unit: 时间单位，可选值为's'(秒), 'ms'(毫秒), 'us'(微秒), 'ns'(纳秒)，若为None则默认使用'ms'
+    :param unit: 时间单位，可选值为's'(秒), 'ms'(毫秒), 'us'(微秒), 'ns'(纳秒)，若为None则自动识别
     :return: 时间戳
     """
-    # 设置默认单位为毫秒
+    # 自动识别时间单位
     if unit is None:
-        unit = 'ms'
+        if dt.microsecond % 1000 == 0:
+            # 没有微秒部分，检查毫秒
+            if dt.microsecond == 0:
+                unit = 's'
+            else:
+                unit = 'ms'
+        else:
+            unit = 'us'
         
     # 验证时间单位有效性
     if unit not in ['s', 'ms', 'us', 'ns']:
