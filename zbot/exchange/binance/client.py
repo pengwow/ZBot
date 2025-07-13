@@ -1,9 +1,11 @@
 import ccxt
+import pandas as pd
 from datetime import datetime
 from zbot.exchange import Exchange
 from zbot.exchange.binance.models import Candle
 from zbot.exchange.binance.data import History
 from zbot.utils.dateutils import str_to_timestamp
+from zbot.services.model import get_candles_from_db
 import time
 
 
@@ -115,3 +117,14 @@ class BinanceExchange(Exchange):
         return
 
     
+    def load_data(self, symbol, interval, start_time=None, end_time=None):
+        """
+        从数据库加载 K 线数据的方法
+        :param symbol: 交易对符号
+        :param interval: 时间间隔，如 '1m', '1h' 等
+        :param start_time: 开始时间，格式为 '2025-01-01 10:00:00' 或 '2025-01-01'，默认为 None
+        :param end_time: 结束时间，格式为 '2025-01-01 10:00:00' 或 '2025-01-01'，默认为 None
+        :return: 从数据库加载的 K 线数据列表
+        """
+        candles = get_candles_from_db('binance',symbol, interval, start_time, end_time)
+        return candles

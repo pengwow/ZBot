@@ -2,7 +2,7 @@
 import importlib
 
 from zbot.common.config import read_config
-
+from . import Exchange
 
 
 
@@ -33,7 +33,7 @@ from zbot.common.config import read_config
 
 class ExchangeFactory:
     @staticmethod
-    def create_exchange(exchange_name, config: dict = {}):
+    def create_exchange(exchange_name, config: dict = {}) -> Exchange:
         config = config or read_config('exchange').get(exchange_name)
         module_name = f"zbot.exchange.{exchange_name.lower()}"
         class_name = f"{exchange_name.capitalize()}Exchange"

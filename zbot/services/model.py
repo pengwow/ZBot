@@ -1,6 +1,7 @@
 import datetime
 from importlib import import_module
 from typing import List, Optional, Any, Tuple
+import pandas as pd
 from datetime import timedelta
 import re
 from zbot.utils.dateutils import str_to_timestamp, timestamp_to_datetime
@@ -105,7 +106,7 @@ def get_candles_from_db(
     timeframe: str,
     start: str,
     end: str
-) -> List[Any]:
+) -> pd.DataFrame:
     """从数据库读取指定交易所的K线数据并进行排序和去重
 
     根据交易所动态导入对应的Candle模型，查询指定时间范围内的K线数据，
@@ -119,7 +120,14 @@ def get_candles_from_db(
         end: 结束时间
 
     返回:
-        List[Any]: 去重并排序后的K线数据列表
+        pd.DataFrame: 去重并排序后的K线数据，包含以下列:
+            - open_time: 开盘时间戳(微秒)
+            - open: 开盘价
+            - high: 最高价
+            - low: 最低价
+            - close: 收盘价
+            - volume: 成交量
+            其他列根据交易所模型可能有所不同
     """
     # 动态导入对应交易所的Candle模型
     try:
@@ -145,13 +153,14 @@ def get_candles_from_db(
         if candle.open_time not in seen_timestamps:
             seen_timestamps.add(candle.open_time)
             unique_candles.append(candle)
-
-    return unique_candles
+    pd_candles = pd.DataFrame([candle.__data__ for candle in candles])
+    return pd_candles
 
 
 if __name__ == "__main__":
     candles = get_candles_from_db('binance', "BTC/USDT", "15m", "2025-01-01", "2025-01-03")
-    
-    for candle in candles:
-        print(timestamp_to_datetime(candle.open_time), candle.close)
+    print(candles.head())
+    print(candles.columns)
+    # for candle in candles:
+    #     print(timestamp_to_datetime(candle.open_time), candle.close)
     
