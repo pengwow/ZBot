@@ -38,7 +38,8 @@ layout = html.Div(
                     enableBatchControl=True,
                     layout='vertical',
                 ),
-                fac.AntdProgress(id='get_data_progress', style={'hidden': True}),
+                fuc.FefferyDiv(children=[], id='progress'),
+                
                 fac.AntdDivider('现有数据'),
                 fac.AntdTable(id='candle_table',
                               columns=[
@@ -65,12 +66,14 @@ layout = html.Div(
 )
 
 
-@callback(
-    [Output("get_data_progress", "hidden"),
-     Output("candle_table", "loading"),],
-    Input("get_data_button", "nClicks"),
-    prevent_initial_call=True  # 防止初始加载触发
-)
-def data_download(n_clicks):
-    print(n_clicks)
-    return True, False
+# @callback(
+#     [Output("get_data_progress", "hidden"),
+#      Output("candle_table", "loading"),
+#      Output('progress', 'children')],
+#     Input("get_data_button", "nClicks"),
+#     prevent_initial_call=True  # 防止初始加载触发
+# )
+# def data_download(n_clicks):
+#     print(n_clicks)
+#     dddd = fac.AntdProgress(id='get_data_progress')
+#     return True, False, dddd
