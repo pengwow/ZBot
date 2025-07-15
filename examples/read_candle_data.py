@@ -1,5 +1,3 @@
-import pandas as pd
-# from zbot.services.model import get_candles_from_db
 from zbot.exchange.exchange import ExchangeFactory
 
 if __name__ == '__main__':

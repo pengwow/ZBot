@@ -1,6 +1,6 @@
 import datetime
 from importlib import import_module
-from typing import List, Optional, Any, Tuple
+from typing import List, Optional, Any, Tuple, Dict
 import pandas as pd
 from datetime import timedelta
 import re
@@ -155,6 +155,111 @@ def get_candles_from_db(
             unique_candles.append(candle)
     pd_candles = pd.DataFrame([candle.__data__ for candle in candles])
     return pd_candles
+
+
+def analyze_candle_data_completeness(
+    exchange_name: str
+) -> List[Dict[str, Any]]:
+    """
+    分析指定交易所所有货币对的K线数据完整度
+
+    该函数从配置文件读取默认时间范围和时间单位，从数据库获取该交易所的所有货币对，
+    批量分析各货币对K线数据完整度并返回结构化结果。
+
+    :param exchange_name: 交易所名称，如'binance'
+    :return: 包含以下键的字典列表：
+             - 'currency_pair': 货币对名称
+             - 'timeframe': 时间单位
+             - 'start_time': 请求开始时间(格式化字符串)
+             - 'end_time': 请求结束时间(格式化字符串)
+             - 'expected_count': 理论预期K线数量
+             - 'actual_count': 实际K线数量
+             - 'completeness': 数据完整度(百分比)
+             - 'missing_count': 缺失K线数量
+             - 'missing_ratio': 缺失比例(小数)
+    """
+    from zbot.utils.dateutils import parse_timeframe, timestamp_to_datetime, str_to_timestamp
+    from typing import List, Dict, Any
+    import pandas as pd
+    from zbot.common.config import read_config
+    from zbot.models.candle import Candle
+    from zbot.services.db import database
+
+    # 从配置文件读取默认参数
+    config = read_config()
+    exchange_config = config.get('exchanges', {}).get(exchange_name, {})
+    timeframe = exchange_config.get('default_timeframe', '15m')
+    start_date_str = exchange_config.get('default_start_date', '2025-01-01')
+    end_date_str = exchange_config.get('default_end_date', '2025-01-03')
+
+    # 从数据库获取该交易所的所有货币对
+    database.open_connection()
+    try:
+        # 注意：Candle模型需要添加exchange字段才能过滤
+        currency_pairs = [
+            row.symbol for row in Candle.select(Candle.symbol).where(
+                Candle.exchange == exchange_name
+            ).distinct()
+        ]
+    except Exception as e:
+        print(f"获取货币对列表失败: {e}")
+        currency_pairs = []
+    finally:
+        database.closed()
+
+    results = []
+    # 解析时间范围
+    start_timestamp = str_to_timestamp(start_date_str)
+    end_timestamp = str_to_timestamp(end_date_str, is_end=True)
+    start_time = timestamp_to_datetime(start_timestamp, unit='ms')
+    end_time = timestamp_to_datetime(end_timestamp, unit='ms')
+    interval = parse_timeframe(timeframe)
+    total_seconds = (end_time - start_time).total_seconds()
+    expected_count = int(total_seconds / interval.total_seconds()) + 1  # +1包含起始点
+
+    for pair in currency_pairs:
+        try:
+            # 获取单个货币对数据
+            data = get_candles_from_db(
+                exchange_name=exchange_name,
+                currency_pair=pair,
+                timeframe=timeframe,
+                start_time=start_date_str,
+                end_time=end_date_str
+            )
+
+            actual_count = len(data)
+            missing_count = max(0, expected_count - actual_count)
+            completeness = (actual_count / expected_count) * 100 if expected_count > 0 else 0
+            missing_ratio = 1 - (actual_count / expected_count) if expected_count > 0 else 1
+
+            results.append({
+                'currency_pair': pair,
+                'timeframe': timeframe,
+                'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'end_time': end_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'expected_count': expected_count,
+                'actual_count': actual_count,
+                'completeness': round(completeness, 2),
+                'missing_count': missing_count,
+                'missing_ratio': round(missing_ratio, 4)
+            })
+        except Exception as e:
+            # 记录错误并继续处理其他货币对
+            results.append({
+                'currency_pair': pair,
+                'timeframe': timeframe,
+                'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'end_time': end_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'expected_count': expected_count,
+                'actual_count': 0,
+                'completeness': 0.0,
+                'missing_count': expected_count,
+                'missing_ratio': 1.0,
+                'error': str(e)
+            })
+
+    return results
 
 
 if __name__ == "__main__":
