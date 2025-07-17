@@ -7,6 +7,62 @@ import feffery_antd_components as fac
 # 注册pages
 dash.register_page(__name__, icon='antd-fund-projection-screen', name='回测')
 
+
+class BacktestRunView():
+    def __init__(self):
+        # super().__init__()
+        self.layout = html.Div(
+            children=[
+                html.H1('运行回测'),
+                fac.AntdTable(id='candle_table',
+                              columns=[
+                                  {'title': '策略', 'dataIndex': 'strategy'},
+                                  {'title': '详情', 'dataIndex': 'detail'},
+                                  {'title': '回测时间', 'dataIndex': 'backtest_time'},
+                                  {'title': '文件名称', 'dataIndex': 'file_name'},
+                                  {'title': '动作', 'dataIndex': 'action'},
+                              ], data=[{
+                                  'strategy': '策略1',
+                                  'detail': '详情1',
+                                  'backtest_time': '2023-01-01',
+                                  'file_name': '文件1',
+                                  'action': html.Div(
+                                      children=[
+                                              fac.AntdPopover(
+                                                  fac.AntdButton(disabled=False,
+                                                                 size='small', icon=fac.AntdIcon(
+                                                                     icon='antd-arrow-right')),
+                                                  content='加载', id=f'load-backtest-btn{i}'
+                                              ),
+                                          fac.AntdPopover(
+                                                  fac.AntdPopconfirm(
+                                                      fac.AntdButton(disabled=False,
+                                                                     size='small', icon=fac.AntdIcon(icon='antd-delete')), title='确认删除'),
+                                                  content="删除", id=f'delete-backtest-btn{i}')
+                                      ]
+                                  )
+                              } for i in range(3)], style={'padding': 5})
+            ]
+        )
+
+    @staticmethod
+    @callback(
+        [
+            Output(f'delete-backtest-btn1', 'disabled'),
+            Output(f'load-backtest-btn1', 'disabled'),
+        ],
+        Input(f'delete-backtest-btn1', 'confirmCounts'),
+        Input('delete-backtest-btn1', 'cancelCounts'),
+        prevent_initial_call=True,
+    )
+    def delete_backtest(confirmCounts, cancelCounts):
+        print(confirmCounts, cancelCounts)
+        if confirmCounts:
+            return True, True
+        return False, False
+
+
+
 layout = html.Div(
     [
         fuc.FefferyDiv(
@@ -63,34 +119,38 @@ layout = html.Div(
     Input('run-backtest-btn', 'nClicks')
 )
 def show_run_backtest_view(n_clicks):
-    return html.Div(
-        children=[
-            html.H1('运行回测'),
-            fac.AntdTable(id='candle_table',
-                          columns=[
-                              {'title': '策略', 'dataIndex': 'strategy'},
-                              {'title': '详情', 'dataIndex': 'detail'},
-                              {'title': '回测时间', 'dataIndex': 'backtest_time'},
-                              {'title': '文件名称', 'dataIndex': 'file_name'},
-                              {'title': '动作', 'dataIndex': 'action'},
-                          ], data=[{
-                              'strategy': '策略1',
-                              'detail': '详情1',
-                              'backtest_time': '2023-01-01',
-                              'file_name': '文件1',
-                              'action': html.Div(
-                                  children=[
-                                          fac.AntdPopover(
-                                              fac.AntdButton(size='small', icon=fac.AntdIcon(
-                                                  icon='antd-arrow-right')),
-                                              content='加载'
-                                          ),
-                                      fac.AntdPopover(
-                                              fac.AntdPopconfirm(fac.AntdButton(
-                                                  size='small', icon=fac.AntdIcon(icon='antd-delete')), title='确认删除'),
-                                          content="删除")
-                                  ]
-                              )
-                          }]*3, style={'padding': 5})
-        ]
-    )
+    backtest_run_view = BacktestRunView()
+    return backtest_run_view.layout
+    # return html.Div(
+    #     children=[
+    #         html.H1('运行回测'),
+    #         fac.AntdTable(id='candle_table',
+    #                       columns=[
+    #                           {'title': '策略', 'dataIndex': 'strategy'},
+    #                           {'title': '详情', 'dataIndex': 'detail'},
+    #                           {'title': '回测时间', 'dataIndex': 'backtest_time'},
+    #                           {'title': '文件名称', 'dataIndex': 'file_name'},
+    #                           {'title': '动作', 'dataIndex': 'action'},
+    #                       ], data=[{
+    #                           'strategy': '策略1',
+    #                           'detail': '详情1',
+    #                           'backtest_time': '2023-01-01',
+    #                           'file_name': '文件1',
+    #                           'action': html.Div(
+    #                               children=[
+    #                                       fac.AntdPopover(
+    #                                           fac.AntdButton(id='load-backtest-btn', disabled=False,
+    #                                                          size='small', icon=fac.AntdIcon(
+    #                                                              icon='antd-arrow-right')),
+    #                                           content='加载'
+    #                                       ),
+    #                                   fac.AntdPopover(
+    #                                           fac.AntdPopconfirm(
+    #                                               fac.AntdButton(id='delete-backtest-btn', disabled=False,
+    #                                                              size='small', icon=fac.AntdIcon(icon='antd-delete')), title='确认删除'),
+    #                                       content="删除")
+    #                               ]
+    #                           )
+    #                       }]*3, style={'padding': 5})
+    #     ]
+    # )

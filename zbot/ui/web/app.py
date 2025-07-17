@@ -104,6 +104,6 @@ if __name__ == '__main__':
         update_title='Loading...',
         use_pages=True,
         pages_folder='pages',  # 对应的pages存放的目录
-        
+        suppress_callback_exceptions=True  # 异常不会触发框架级错误处理
     )
     app.run(debug=True)
