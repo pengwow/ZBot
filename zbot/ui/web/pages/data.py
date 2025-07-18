@@ -1,10 +1,29 @@
 import dash
-from dash import html, dcc, callback, Input, Output
+from dash import html, dcc, callback, Input, Output, State
 import feffery_utils_components as fuc
 import feffery_antd_components as fac
 
 # 注册pages
 dash.register_page(__name__, icon='antd-save', name='数据')
+
+TIMEFRAME_FORM = [
+    '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d'
+]
+
+
+class DownloadData(object):
+    def __init__(self) -> None:
+        pass
+
+    def get_data_progress():
+        return html.Div(
+            children=[
+                fac.AntdSpace(
+                    []
+                )
+            ]
+        )
+
 
 # 内容区
 layout = html.Div(
@@ -14,22 +33,19 @@ layout = html.Div(
                 fac.AntdForm(
                     [
                         fac.AntdFormItem(
-                            fac.AntdSelect(), label=f'交易商', hasFeedback=True, id='exchange_form'
+                            fac.AntdSelect(id='trade_mode_form'), label=f'交易模式', hasFeedback=True
                         ),
                         fac.AntdFormItem(
-                            fac.AntdSelect(), label=f'交易模式', hasFeedback=True, id='trade_mode_form'
+                            fac.AntdSelect(id='symbol_form',options=['BTC/USDT'], value='BTC/USDT'), label=f'交易对', hasFeedback=True
                         ),
                         fac.AntdFormItem(
-                            fac.AntdSelect(), label=f'交易对', hasFeedback=True, id='symbol_form'
+                            fac.AntdSelect(id='timeframe_form', options=[i for i in TIMEFRAME_FORM]), label=f'时间周期', hasFeedback=True
                         ),
                         fac.AntdFormItem(
-                            fac.AntdSelect(), label=f'时间周期', hasFeedback=True, id='timeframe_form'
+                            fac.AntdDatePicker(style={'display': 'block'}, id='start_time_form'), label=f'开始时间', hasFeedback=True
                         ),
                         fac.AntdFormItem(
-                            fac.AntdDatePicker(style={'display': 'block'}), label=f'开始时间', hasFeedback=True, id='start_time_form'
-                        ),
-                        fac.AntdFormItem(
-                            fac.AntdDatePicker(style={'display': 'block'}), label=f'结束时间', hasFeedback=True, id='end_time_form'
+                            fac.AntdDatePicker(style={'display': 'block'}, id='end_time_form'), label=f'结束时间', hasFeedback=True
                         ),
                         fac.AntdButton(
                             '获取数据', type='primary', block=True, id='get_data_button', autoSpin=True)
@@ -37,9 +53,16 @@ layout = html.Div(
                     id='data_form',
                     enableBatchControl=True,
                     layout='vertical',
+                    values={
+                        'trade_mode_form': 'spot',
+                        'symbol_form': 'BTC/USDT',
+                        'timeframe_form': '15m',
+                        'start_time_form': '2023-01-01',
+                        'end_time_form': '2023-01-02',
+                    }
                 ),
                 fuc.FefferyDiv(children=[], id='progress'),
-                
+
                 fac.AntdDivider('现有数据'),
                 fac.AntdTable(id='candle_table',
                               columns=[
@@ -66,14 +89,25 @@ layout = html.Div(
 )
 
 
-# @callback(
-#     [Output("get_data_progress", "hidden"),
-#      Output("candle_table", "loading"),
-#      Output('progress', 'children')],
-#     Input("get_data_button", "nClicks"),
-#     prevent_initial_call=True  # 防止初始加载触发
-# )
-# def data_download(n_clicks):
-#     print(n_clicks)
-#     dddd = fac.AntdProgress(id='get_data_progress')
-#     return True, False, dddd
+@callback(
+    # [Output("get_data_progress", "hidden"),
+    #  Output("candle_table", "loading"),
+    #  Output('progress', 'children')],
+    Input("get_data_button", "nClicks"),
+    State('data_form', 'values'),
+    # State('trade_mode_form', 'value'),
+    # State('symbol_form', 'value'),
+    # State('timeframe_form', 'value'),
+    # State('start_time_form', 'value'),
+    # State('end_time_form', 'value'),
+    prevent_initial_call=True  # 防止初始加载触发
+)
+def data_download(n_clicks, values):
+# def data_download(n_clicks, exchange, trade_mode, symbol, timeframe, start_time, end_time):
+    print(n_clicks)
+    # dddd = fac.AntdProgress(id='get_data_progress')
+    print('1111111')
+    print(values)
+    # print(exchange)
+    # download_data = DownloadData()
+    # return True, False, download_data.get_data_progress()

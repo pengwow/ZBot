@@ -13,7 +13,18 @@ class BacktestRunView():
         # super().__init__()
         self.layout = html.Div(
             children=[
-                html.H1('运行回测'),
+                fac.AntdSpace(
+                    [
+                        fac.AntdText('策略', style={'width': '150px'}),
+                        fac.AntdSelect(options=[
+                            {'label': '策略 1', 'value': 'run'},
+                            {'label': '策略 2', 'value': 'analyze'}
+                            ], style={'width': '150px'}),
+                        fac.AntdButton(id="refresh-backtest-btn", icon=fac.AntdIcon(icon='antd-reload'))
+                    ]
+                ),
+
+                html.H1('回测记录'),
                 fac.AntdTable(id='candle_table',
                               columns=[
                                   {'title': '策略', 'dataIndex': 'strategy'},
@@ -60,7 +71,6 @@ class BacktestRunView():
         if confirmCounts:
             return True, True
         return False, False
-
 
 
 layout = html.Div(
