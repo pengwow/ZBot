@@ -13,6 +13,7 @@ class BinanceExchange(Exchange):
     """
     定义 BinanceExchange 类，继承自 Exchange 类，用于与 Binance 交易所进行交互
     """
+
     def __init__(self, exchange_name='binance', api_key=None, secret_key=None, trading_mode='spot', proxy_url=None, testnet=False):
         """
         初始化方法，用于创建 Binance 交易所客户端实例
@@ -82,7 +83,7 @@ class BinanceExchange(Exchange):
             ignore=candle[11]
         )
 
-    def download_data(self, symbol, interval, start_time=None, end_time=None, limit=500, candle_type=None, progress_queue=None):
+    def download_data(self, symbol: str, interval: str, start_time=None, end_time=None, limit=500, candle_type=None, progress_queue=None):
         """
         下载 K 线数据的方法
         :param symbol: 交易对符号
@@ -98,6 +99,7 @@ class BinanceExchange(Exchange):
             start_time = str_to_timestamp(start_time)
         if end_time:
             end_time = str_to_timestamp(end_time)
+        symbol = symbol.replace('/', '')
         # 如果提供了开始时间和结束时间
         if start_time and end_time:
             # 获取当前时间戳(毫秒)
@@ -113,10 +115,10 @@ class BinanceExchange(Exchange):
                 return res
             else:
                 h = History(self)
-                res = h.download_data(symbol, interval, start_time, end_time, limit)
+                res = h.download_data(
+                    symbol, interval, start_time, end_time, limit)
         return
 
-    
     def load_data(self, symbol, interval, start_time=None, end_time=None):
         """
         从数据库加载 K 线数据的方法
@@ -126,5 +128,6 @@ class BinanceExchange(Exchange):
         :param end_time: 结束时间，格式为 '2025-01-01 10:00:00' 或 '2025-01-01'，默认为 None
         :return: 从数据库加载的 K 线数据列表
         """
-        candles = get_candles_from_db('binance',symbol, interval, start_time, end_time)
+        candles = get_candles_from_db(
+            'binance', symbol, interval, start_time, end_time)
         return candles

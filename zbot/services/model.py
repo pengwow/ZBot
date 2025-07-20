@@ -114,7 +114,7 @@ def get_candles_from_db(
 
     参数:
         exchange: 交易所名称(如'binance')
-        symbol: 交易对(如'BTC/USDT')
+        symbol: 交易对(如'BTCUSDT')
         timeframe: K线周期(如'1m')
         start: 开始时间
         end: 结束时间
@@ -137,6 +137,7 @@ def get_candles_from_db(
         raise ValueError(f"不支持的交易所: {exchange}")
     start = str_to_timestamp(start, 'us')
     end = str_to_timestamp(end, 'us')
+    symbol = Candle.get_by_symbol(symbol)
     # 查询指定条件的K线数据并按时间戳排序
     candles = list(
         Candle.select().where(
