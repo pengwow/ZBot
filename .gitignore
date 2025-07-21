@@ -1,6 +1,7 @@
 .idea/
 .venv/
 .vscode/
+.vercel/
 .env
 *.pyc
 zbot/zbot.db
