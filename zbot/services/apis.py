@@ -12,6 +12,7 @@ import threading
 from multiprocessing import Manager, Queue
 from zbot.utils.dateutils import str_to_timestamp
 from zbot.exchange.exchange import ExchangeFactory
+from zbot.services.backtest import Backtest
 from zbot.models.log import Log, LogType
 import time
 
@@ -253,6 +254,16 @@ def handle_download_history(data):
     thread = threading.Thread(target=download_task, args=(download_request, task_id))
     thread.daemon = True
     thread.start()
+
+@app.route('/run_backtest', methods=['POST'])
+def run_backtest():
+    """后台执行回测任务并更新进度"""
+    json_data = request.get_json()
+    # 初始化回测任务
+    backtest_task = Backtest(**json_data)
+    backtest_task.run()
+    return jsonify({"task_id": "xxxx"})
+
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=8000, debug=True)
