@@ -5,7 +5,7 @@ import feffery_utils_components as fuc
 import feffery_antd_components as fac
 import pandas as pd
 # 注册pages
-dash.register_page(__name__, icon='antd-stock', name='图表')
+# dash.register_page(__name__, icon='antd-stock', name='图表')
 df = pd.read_csv('/Users/liupeng/PycharmProjects/ZBot/temp/charts.csv')
 layout = html.Div(
     [

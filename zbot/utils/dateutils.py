@@ -41,7 +41,7 @@ def timestamp_to_datetime(timestamp: Union[int, float, str], unit: Optional[str]
                 unit = 'ns'
             else:
                 return None  # 无法识别的时间戳格式
-        
+
         # 验证时间单位有效性
         if unit not in ['s', 'ms', 'us', 'ns']:
             return None  # 无效的时间单位
@@ -87,11 +87,11 @@ def datetime_to_timestamp(dt: datetime, unit: Optional[str] = None) -> int:
                 unit = 'ms'
         else:
             unit = 'us'
-        
+
     # 验证时间单位有效性
     if unit not in ['s', 'ms', 'us', 'ns']:
         raise ValueError(f"无效的时间单位: {unit}，必须是's', 'ms', 'us'或'ns'")
-        
+
     timestamp = dt.timestamp()
     if unit == 'ms':
         return int(timestamp * 1000)
@@ -250,6 +250,20 @@ def get_timestamp_range_by_date(date_str: str, fmt: str = '%Y-%m-%d', unit: str 
         return start_timestamp, end_timestamp
     except ValueError:
         return None
+
+
+def parse_date_range(date_str: str):
+    """
+    将日期范围字符串转换为格式化的开始和结束日期
+    :param date_str: 格式为"YYYYMMDD-YYYYMMDD"的字符串
+    :return: 格式化后的开始日期和结束日期，如("YYYY-MM-DD", "YYYY-MM-DD")
+    """
+    start_str, end_str = date_str.split('-')
+    # 格式化开始日期
+    start_date = f"{start_str[:4]}-{start_str[4:6]}-{start_str[6:]}"
+    # 格式化结束日期
+    end_date = f"{end_str[:4]}-{end_str[4:6]}-{end_str[6:]}"
+    return start_date, end_date
 
 
 if __name__ == '__main__':

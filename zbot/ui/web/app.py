@@ -95,8 +95,7 @@ class App(Dash):
             ],
         )
 
-
-if __name__ == '__main__':
+def run_web_ui(host=None, port=None):
     app = App(
         name=__name__,
         assets_folder='assets',  # 对应资源存放目录,可下载后解压到这里
@@ -106,4 +105,8 @@ if __name__ == '__main__':
         pages_folder='pages',  # 对应的pages存放的目录
         suppress_callback_exceptions=True  # 异常不会触发框架级错误处理
     )
-    app.run(debug=True)
+    app.run(host=host, port=port, debug=True)
+
+if __name__ == '__main__':
+    run_web_ui('0.0.0.0', 8080)
+    
