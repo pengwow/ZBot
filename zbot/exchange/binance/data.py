@@ -413,7 +413,7 @@ if __name__ == '__main__':
     })
     h = History(exchange)
     # h.download_data('BTC/USDT', '15m')
-    h.download_data('BTCUSDT', '15m', 'futures')
+    h.download_data('BTCUSDT', '15m', '')
     # h.download_from_archive('BTCUSDT', '15m', 'futures', '2024-10-27')
     # res = h.get_zip_url('BTCUSDT', '15m', 'spot', '2024-10-27')
     # print(res)

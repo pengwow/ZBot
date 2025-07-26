@@ -169,13 +169,14 @@ class Backtest(object):
 
 
 if __name__ == '__main__':
-    # backtest = Backtest('SmaCross', 'ETH/USDT', '15m',
-    #                     '2025-01-01', '2025-06-01', 10_000, 0.002)
-    # stats = backtest.run()
-    # print(stats)
-    # backtest.bt.plot()
-    names = get_strategy_class_names()
-    print(names)
+    backtest = Backtest('SmaCross', 'ETH/USDT', '15m',
+                        '2025-01-01', '2025-06-01', 10_000, 0.002)
+    stats = backtest.run()
+    print(stats)
+    backtest.bt.plot()
+    # # 示例：获取所有策略类的名称
+    # strategy_names = get_strategy_class_names()
+    # print(strategy_names)
 
     # from zbot.utils.dateutils import timestamp_to_datetime, format_datetime
     # candles = get_candles_from_db(
