@@ -8,5 +8,7 @@ zbot/zbot.db
 zbot/config.yml
 zbot/data/spot/zbot.db
 temp/
+tmp/
 zbot/data/spot/zbot.db-shm
 zbot/data/spot/zbot.db-wal
+

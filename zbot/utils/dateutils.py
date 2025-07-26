@@ -266,6 +266,29 @@ def parse_date_range(date_str: str):
     return start_date, end_date
 
 
+def timedelta_to_localized_string(td: timedelta, lang: str = 'zh') -> str:
+    """
+    将timedelta对象转换为本地化的字符串表示
+    :param td: timedelta对象
+    :param lang: 语言，'zh'为中文，'en'为英文
+    :return: 本地化的字符串表示
+    """
+    if lang == 'zh':
+        # 中文表示
+        parts = []
+        if td.days:
+            parts.append(f"{td.days}天")
+        if td.seconds:
+            hours, remainder = divmod(td.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            if hours:
+                parts.append(f"{hours}小时")
+            if minutes:
+                parts.append(f"{minutes}分钟")
+            if seconds:
+                parts.append(f"{seconds}秒")
+        return "".join(parts)
+
 if __name__ == '__main__':
     # 示例用法
     print("当前时间格式化:", format_datetime())
