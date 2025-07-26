@@ -1,12 +1,14 @@
+from datetime import datetime
+import time
+
 import ccxt
 import pandas as pd
-from datetime import datetime
+
 from zbot.exchange import Exchange
-from zbot.exchange.binance.models import Candle
 from zbot.exchange.binance.data import History
-from zbot.utils.dateutils import str_to_timestamp
+from zbot.exchange.binance.models import Candle
 from zbot.services.model import get_candles_from_db
-import time
+from zbot.utils.dateutils import str_to_timestamp
 
 
 class BinanceExchange(Exchange):
