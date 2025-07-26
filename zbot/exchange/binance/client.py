@@ -110,8 +110,8 @@ class BinanceExchange(Exchange):
             # 获取当前时间戳(毫秒)
             current_time = int(time.time() * 1000)
             # 计算 30 天前的时间戳(毫秒)
-            thirty_days_ago = current_time - 30 * 24 * 60 * 60 * 1000
-            # 如果开始时间早于 30 天前，则从历史归档地址下载数据
+            thirty_days_ago = current_time - 7 * 24 * 60 * 60 * 1000
+            # 接口只能获取7天内数据,超过七天的数据从归档地址获取
             if start_time < thirty_days_ago:
                 # 从历史归档地址下载历史数据
                 history = History(self)

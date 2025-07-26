@@ -11,6 +11,6 @@ if exchange:
     print(f"成功加载{exchange.exchange_name}交易所模块")
     symbol = 'ETC/USDT'
     interval = '15m'
-    start_time = '2025-01-01'
-    end_time = '2025-07-10'
+    start_time = '2025-07-23'
+    end_time = '2025-07-26'
     candles = exchange.download_data(symbol=symbol, interval=interval, start_time=start_time, end_time=end_time)
