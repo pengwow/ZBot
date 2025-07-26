@@ -26,6 +26,10 @@ def get_strategy_names():
 
 
 def get_strategy_class_names():
+    """
+    查找策略目录下的策略文件中的策略类名
+    :return: 包含所有策略类名的列表
+    """
     # 查找策略目录下的策略文件中的策略类名
     class_names = []
     strategy_names = get_strategy_names()
@@ -39,7 +43,7 @@ def get_strategy_class_names():
 
             # 查找匹配的类
             for name in class_matches:
-                class_names.append(name)
+                class_names.append({'name': name, 'filename': filename})
     return class_names
 
 

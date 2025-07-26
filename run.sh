@@ -1,1 +1,1 @@
-python zbot/services/web.py run
+python3 zbot/services/web.py run

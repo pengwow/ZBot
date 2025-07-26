@@ -1,16 +1,17 @@
 import dash
-from dash import Dash, html, dcc, Output, Input
+from dash import Dash, html, dcc, Output, Input, callback
 import feffery_antd_components as fac
 import feffery_utils_components as fuc
-
+from zbot.common.config import read_config
 
 class App(Dash):
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
-
+        self.config_data = self.load_init_data()
         self.layout = html.Div(
             [
                 dcc.Location(id="url"),
+                dcc.Store(id='global-storage'),  # 全局存储组件
                 html.Div(
                     [
                         fuc.FefferyDiv(
@@ -95,6 +96,24 @@ class App(Dash):
             ],
         )
 
+    def load_init_data(self):
+        data = read_config()
+        print(f"加载全局配置: {data}")
+        return data
+
+@callback(
+    Output('global-storage', 'data'),
+    Input('global-storage', 'data')
+)
+def load_init_data(data):
+    if not data:
+        data = read_config()
+        print(f"加载全局配置: {data}")
+    else:
+        print(f"全局配置已存在: {data}")
+    return data
+
+
 def run_web_ui(host=None, port=None):
     app = App(
         name=__name__,
@@ -108,5 +127,5 @@ def run_web_ui(host=None, port=None):
     app.run(host=host, port=port, debug=True)
 
 if __name__ == '__main__':
-    run_web_ui('0.0.0.0', 8080)
+    run_web_ui('127.0.0.1', 8080)
     

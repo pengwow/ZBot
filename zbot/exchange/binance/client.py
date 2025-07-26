@@ -51,6 +51,8 @@ class BinanceExchange(Exchange):
             'taker_buy_quote_volume', 'ignore'
         ]
         self.trading_mode = trading_mode
+        self.exchange.load_markets()
+        self._symbols = None
 
     def prase_ohlcv_custom(self, ohlcv, market):
         """
@@ -83,6 +85,7 @@ class BinanceExchange(Exchange):
             ignore=candle[11]
         )
 
+    # 下载数据
     def download_data(self, symbol: str, interval: str, start_time=None, end_time=None, limit=500, candle_type=None, progress_queue=None):
         """
         下载 K 线数据的方法
@@ -131,3 +134,18 @@ class BinanceExchange(Exchange):
         candles = get_candles_from_db(
             'binance', symbol, interval, start_time, end_time)
         return candles
+
+    @property
+    def symbols(self):
+        if not self._symbols:
+            self._symbols = [i for i in self.exchange.symbols if ':' not in i]
+        return self._symbols
+
+
+if __name__ == '__main__':
+    from zbot.common.config import read_config
+    config = read_config('exchange')['binance']
+    client = BinanceExchange(
+        api_key=config['api_key'], secret_key=config['secret_key'], proxy_url=config['proxy_url'])
+    symbols = client.symbols
+    print(symbols)

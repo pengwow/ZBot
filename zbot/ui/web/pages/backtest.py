@@ -4,6 +4,7 @@ import dash
 from dash import html, dcc, callback, Input, Output, State
 import feffery_utils_components as fuc
 import feffery_antd_components as fac
+from zbot.services.backtest import get_strategy_class_names
 
 # 注册pages
 dash.register_page(__name__, icon='antd-fund-projection-screen', name='回测')
@@ -22,6 +23,7 @@ class BacktestRunView():
                                     [
                                         html.Div([
                                             fac.AntdSelect(
+                                                id="backtest_strategy",
                                                 options=[
                                                     {'label': '策略 1',
                                                         'value': 'run'},
@@ -68,7 +70,8 @@ class BacktestRunView():
                                 ),
                                 fac.AntdButton(
                                     '运行回测', id='run_backtest_btn', type='primary', block=True),
-                                fac.AntdSpin(fac.AntdText(id='run_backtest_spin_output'), text='回测中',  fullscreen=True),
+                                fac.AntdSpin(fac.AntdText(
+                                    id='run_backtest_spin_output'), text='回测中',  fullscreen=True),
                             ],
                             id='run_backtest_form',
                             enableBatchControl=True,
@@ -109,8 +112,8 @@ class BacktestRunView():
                                       ]
                                   )
                     } for i in range(3)], style={'padding': 5}
-                    ),
-                    
+                ),
+
             ]
         )
 
@@ -129,6 +132,28 @@ class BacktestRunView():
         if confirmCounts:
             return True, True
         return False, False
+
+    @staticmethod
+    @callback(
+        Output('backtest_strategy', 'options'),
+        Input('refresh-backtest-btn', 'nClicks'),
+        prevent_initial_call=True,
+    )
+    def refresh_backtest_btn(n_clicks):
+        class_names = get_strategy_class_names()
+        return [{'label': f"{item['name']} ({item['filename']})", 'value': item['name']} for item in class_names]
+
+    @staticmethod
+    @callback(
+        Output('backtest_strategy', 'value'),
+        Input('global-storage', 'data'),
+        prevent_initial_call=True,
+    )
+    def load_config(data):
+        print(f"回测页面获取data: {data}")
+        if data:
+            return data[0]['value']
+        return ''
 
     @callback(
         [
@@ -193,6 +218,7 @@ layout = html.Div(
 def show_run_backtest_view(n_clicks):
     backtest_run_view = BacktestRunView()
     return backtest_run_view.layout
+
 
 @callback(
     Output('run_back_message-div', 'children'),
