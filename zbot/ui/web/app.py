@@ -1,17 +1,23 @@
+from flask import Flask
 import dash
-from dash import Dash, html, dcc, Output, Input, callback
+from dash import Dash, html, dcc, Output, Input, callback, ctx
 import feffery_antd_components as fac
 import feffery_utils_components as fuc
 from zbot.common.config import read_config
+from zbot.exchange.exchange import ExchangeFactory
+
 
 class App(Dash):
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
+        self._symbols = None
         self.config_data = self.load_init_data()
+        self.exchange = self.init_exchange()
         self.layout = html.Div(
             [
                 dcc.Location(id="url"),
                 dcc.Store(id='global-storage'),  # 全局存储组件
+                fac.Fragment(id='global-message'),  # 注入全局消息提示容器
                 html.Div(
                     [
                         fuc.FefferyDiv(
@@ -98,25 +104,27 @@ class App(Dash):
 
     def load_init_data(self):
         data = read_config()
-        print(f"加载全局配置: {data}")
+        print(f"加载全局配置")
+
         return data
 
-@callback(
-    Output('global-storage', 'data'),
-    Input('global-storage', 'data')
-)
-def load_init_data(data):
-    if not data:
-        data = read_config()
-        print(f"加载全局配置: {data}")
-    else:
-        print(f"全局配置已存在: {data}")
-    return data
+    def init_exchange(self):
+        self.exchange = ExchangeFactory.create_exchange(
+            self.config_data['exchange']['name'])
+        self._symbols = self.exchange.symbols
+        return self.exchange
+
+    @property
+    def symbols(self):
+        return self._symbols
 
 
 def run_web_ui(host=None, port=None):
+    # 创建 Flask 应用
+    # server = Flask(__name__)
     app = App(
         name=__name__,
+        # server=server,  # 将 Flask 应用实例传递给 Dash
         assets_folder='assets',  # 对应资源存放目录,可下载后解压到这里
         title='ZBot',
         update_title='Loading...',
@@ -124,8 +132,18 @@ def run_web_ui(host=None, port=None):
         pages_folder='pages',  # 对应的pages存放的目录
         suppress_callback_exceptions=True  # 异常不会触发框架级错误处理
     )
-    app.run(host=host, port=port, debug=True)
+
+    ctx.global_vars = {
+        "config_data": app.config_data,  # 全局配置数据
+        "exchange": app.exchange,  # 全局交易所实例
+        "symbols": app.symbols,  # 全局交易对
+    }
+    app.run(host=host,
+            port=port,
+            debug=True,
+            # use_reloader=False
+            )  # 禁用重载器避免双重加载
+
 
 if __name__ == '__main__':
     run_web_ui('127.0.0.1', 8080)
-    

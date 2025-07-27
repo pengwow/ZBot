@@ -235,10 +235,16 @@ class Backtest(object):
 
 if __name__ == '__main__':
     # 示例：使用策略类名创建Backtest实例
-    backtest = Backtest('SmaCross', 'ETH/USDT', '15m',
-                        '2025-01-01', '2025-06-01', 10_000, 0.002)
-    stats = backtest.run()
-    print(stats)
+    # backtest = Backtest('SmaCross', 'ETH/USDT', '15m',
+    #                     '2025-01-01', '2025-06-01', 10_000, 0.002)
+    # stats = backtest.run()
+    # print(stats)
+
+    # 获取回测记录
+    backtest_records = BacktestRecord.select().order_by(BacktestRecord.start_time.desc())
+    for record in backtest_records:
+        print(record.to_dict())
+        # print(record.strategy_name, record.start_time, record.end_time, record.total_return, record.max_drawdown)
     # backtest.bt.plot()
     # # 示例：获取所有策略类的名称
     # strategy_names = get_strategy_class_names()
