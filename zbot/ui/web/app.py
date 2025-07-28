@@ -17,7 +17,7 @@ class App(Dash):
             [
                 dcc.Location(id="url"),
                 dcc.Store(id='global-storage'),  # 全局存储组件
-                fac.Fragment(id='global-message'),  # 注入全局消息提示容器
+                fac.Fragment(id='global-message-container'),  # 注入全局消息提示容器
                 html.Div(
                     [
                         fuc.FefferyDiv(
@@ -109,9 +109,14 @@ class App(Dash):
         return data
 
     def init_exchange(self):
-        self.exchange = ExchangeFactory.create_exchange(
-            self.config_data['exchange']['name'])
-        self._symbols = self.exchange.symbols
+        try:
+            self.exchange = ExchangeFactory.create_exchange(
+                self.config_data['exchange']['name'])
+            self._symbols = self.exchange.symbols
+        except Exception as e:
+            print(f"初始化交易所失败: {e}")
+            self.exchange = None
+            self._symbols = None
         return self.exchange
 
     @property
@@ -141,8 +146,8 @@ def run_web_ui(host=None, port=None):
     app.run(host=host,
             port=port,
             debug=True,
-            # use_reloader=False
-            )  # 禁用重载器避免双重加载
+            # use_reloader=False # 禁用重载器避免双重加载
+            )  
 
 
 if __name__ == '__main__':
