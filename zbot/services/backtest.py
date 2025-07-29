@@ -110,56 +110,63 @@ class Backtest(object):
         self.commission = commission
         self.exchange = exchange or read_config('exchange')['name']
 
-        # 定义英文到中文的映射关系
+        # 指标含义映射关系
         self.translations = {
-            'Start': '起始资金',
-            'End': '结束资金',
-            'Duration': '回测时长',
-            'Exposure Time [%]': '持仓时间百分比',
-            'Equity Final [$]': '最终权益',
-            'Equity Peak [$]': '权益峰值',
-            'Commissions [$]': '手续费',
-            'Return [%]': '收益率',
-            'Buy & Hold Return [%]': '买入持有收益率',
-            'Return (Ann.) [%]': '年化收益率',
-            'Volatility (Ann.) [%]': '年化波动率',
-            'CAGR [%]': '复合年化增长率',
-            'Max. Drawdown [%]': '最大回撤',
-            'Sharpe Ratio': '夏普比率',
-            'Sortino Ratio': '索提诺比率',
-            'Calmar Ratio': '卡尔马比率',
-            'Alpha [%]': '阿尔法系数',
-            'Beta': '贝塔系数',
-            'Win Rate [%]': '胜率',
-            'Best Trade [%]': '最佳交易',
-            'Worst Trade [%]': '最差交易',
-            'Avg. Trade [%]': '平均交易',
-            'Total Trades': '总交易次数',
-            'Max. Trade Duration': '最大交易时长',
-            'Avg. Trade Duration': '平均交易时长',
-            'Max. Drawdown Duration': '最大回撤时长',
-            'Avg. Drawdown Duration': '平均回撤时长',
-            'Avg. Drawdown [%]': '平均回撤',
-            'Profit Factor': '利润因子',
-            'Expectancy [%]': '期望值',
-            'SQN': '系统质量数',
-            'Kelly Criterion': '凯利准则',
+            # 基础指标
+            'Start': {'cn': '起始时间', 'en': 'Start'},
+            'End': {'cn': '结束时间', 'en': 'End'},
+            'Duration': {'cn': '策略运行时间', 'en': 'Duration', 'desc': '反映策略回测的时间跨度。时间越长，策略的长期稳定性越能被验证。'},
+            'Exposure Time [%]': {'cn': '持仓时间百分比', 'en': 'Exposure Time [%]', 'desc': '表示策略在回测期间平均持仓时间占比。高比例说明策略倾向于中长期持有，低比例可能为高频或短线策略。'},
+            'Equity Final [$]': {'cn': '最终权益', 'en': 'Equity Final [$]', 'desc': '策略最终资产价值。'},
+            'Equity Peak [$]': {'cn': '权益峰值', 'en': 'Equity Peak [$]', 'desc': '策略历史最高资产值。​​意义​​：反映策略的收益潜力与风险（如峰值后是否大幅回撤）。'},
+            'Commissions [$]': {'cn': '手续费', 'en': 'Commissions [$]', 'desc': '策略交易中的手续费成本。'},
+            # 收益与风险指标
+            'Return [%]': {'cn': '总收益率', 'en': 'Return [%]', 'desc': '策略总收益率。需结合时间跨度评估（如年化收益是否合理）。'},
+            'Return (Ann.) [%]': {'cn': '年化收益率', 'en': 'Return (Ann.) [%]', 'desc': '扣除时间后的年均收益。理想值应高于市场基准（如美股长期年化约7-10%）。'},
+            'Buy & Hold Return [%]': {'cn': '买入持有收益率', 'en': 'Buy & Hold Return [%]', 'desc': '在回测期间不进行交易，仅用初始资金购买资产并持有至结束时间的收益率。用于比较策略的相对表现。'},
+            'Volatility (Ann.) [%]': {'cn': '年化波动率', 'en': 'Volatility (Ann.) [%]', 'desc': '衡量收益的波动程度。高波动（>30%）通常伴随高风险。'},
+            'CAGR [%]': {'cn': '复合年化增长率', 'en': 'CAGR [%]', 'desc': '剔除波动后的平滑收益，更真实反映长期增长能力。'},
+            'Sharpe Ratio': {'cn': '夏普比率', 'en': 'Sharpe Ratio', 'desc': '衡量单位风险下的超额收益。>1为优秀，0.5-1为合理，<0.5需谨慎。'},
+            'Sortino Ratio': {'cn': '索提诺比率', 'en': 'Sortino Ratio', 'desc': '仅考虑下行风险后的收益比。>1表明策略在熊市中抗跌能力较强。'},
+            'Calmar Ratio': {'cn': '卡尔马比率', 'en': 'Calmar Ratio', 'desc': '收益与最大回撤的比值。>1表示策略回撤后能快速恢复，<1需警惕风险。'},
+            # 策略性能指标​​
+            'Alpha [%]': {'cn': '阿尔法系数', 'en': 'Alpha [%]', 'desc': '策略相对于基准（如市场指数）的超额收益。高Alpha表明策略有效。'},
+            'Beta': {'cn': '贝塔系数', 'en': 'Beta', 'desc': '衡量策略收益与市场收益的相关性。>1表明策略收益与市场收益正相关，<1表明负相关。'},
+            'Max. Drawdown [%]': {'cn': '最大回撤', 'en': 'Max. Drawdown [%]', 'desc': '策略从峰值到谷底的跌幅。>30%为高风险，需评估恢复能力。'},
+            'Avg. Drawdown [%]': {'cn': '平均回撤', 'en': 'Avg. Drawdown [%]', 'desc': '策略历史最大回撤的平均值，反映策略的波动频率。'},
+            'Profit Factor': {'cn': '利润因子', 'en': 'Profit Factor', 'desc': '盈利交易总收益与亏损交易总损失的比值。>1.5为稳健策略。'},
+            'Win Rate [%]': {'cn': '胜率', 'en': 'Win Rate [%]', 'desc': '盈利交易占比。高频策略通常>50%，长线策略可能<50%。'},
+            'Expectancy [%]': {'cn': '期望值', 'en': 'Expectancy [%]', 'desc': '单次交易的平均收益（胜率×平均盈利 - 败率×平均亏损）。'},
+            # 交易行为指标​​
+            '# Trades': {'cn': '交易次数', 'en': '# Trades', 'desc': '策略活跃度。高频策略可能达数千次，长线策略可能仅数次。'},
+            'Win Rate [%]': {'cn': '胜率', 'en': 'Win Rate [%]', 'desc': '盈利交易占总交易的比例。'},
+            'Best Trade [%]': {'cn': '最佳交易', 'en': 'Best Trade [%]', 'desc': '单笔交易的最大盈利百分比。'},
+            'Worst Trade [%]': {'cn': '最差交易', 'en': 'Worst Trade [%]', 'desc': '单笔交易的最大亏损百分比。'},
+            'Avg. Trade [%]': {'cn': '平均交易收益率', 'en': 'Avg. Trade [%]', 'desc': '所有交易的平均盈利百分比。'},
+            'Max. Trade Duration': {'cn': '最大持仓时间​​', 'en': 'Max. Trade Duration', 'desc': '显示策略可能长期持有头寸，需关注资金占用和机会成本。'},
+            'Avg. Trade Duration': {'cn': '平均持仓时间', 'en': 'Avg. Trade Duration', 'desc': '反映策略的中短期交易风格。'},
+            'Total Trades': {'cn': '总交易次数', 'en': 'Total Trades', 'desc': '策略交易的总次数，反映策略的活跃度。'},
+            'Max. Drawdown Duration': {'cn': '最大回撤时长', 'en': 'Max. Drawdown Duration', 'desc': '显示策略可能长期持有头寸，需关注资金占用和机会成本。'},
+            'Avg. Drawdown Duration': {'cn': '平均回撤时长', 'en': 'Avg. Drawdown Duration', 'desc': '反映策略的风险承受能力。'},
+            'SQN': {'cn': '系统质量数', 'en': 'SQN', 'desc': '衡量交易系统质量的综合指标，结合交易次数、盈亏比和稳定性。'},
+            'Kelly Criterion': {'cn': '凯利准则', 'en': 'Kelly Criterion', 'desc': '优化资金分配比例，最大化长期收益。最大回撤限制​​：若策略历史最大回撤为 D%，建议凯利仓位不超过 D% / 最大回撤。夏普比率校准​​：若策略夏普比率 S < 1，建议凯利仓位减半'},
             # 可以根据实际输出结果添加更多映射
         }
 
     def to_dict(self, result):
         # 创建翻译后的结果字典
-        translated_result = {}
+        translated_result = []
         for key, value in result.items():
             if key in ['_strategy', '_equity_curve', '_trade_list', '_trades']:
                 continue
             # 如果键在翻译字典中存在，则使用中文键，否则保留原键
-            translated_key = self.translations.get(key, key)
+            translated_value = self.translations.get(key, key)
             if isinstance(value, datetime):
                 value = value.strftime('%Y-%m-%d %H:%M:%S')
             elif isinstance(value, pd.Timedelta):
                 value = timedelta_to_localized_string(value)
-            translated_result[translated_key] = value
+            translated_value['value'] = value
+            translated_result.append(translated_value)
         return translated_result
 
     def run(self):
@@ -202,9 +209,14 @@ class Backtest(object):
             json.dump(self.to_dict(self.stats), f, ensure_ascii=False, indent=2)
         
         translated_result = self.to_dict(self.stats)
-        total_return = translated_result.get('收益率', 0.0)
-        max_drawdown = translated_result.get('最大回撤', 0.0)
-        
+        total_return = 0.0
+        max_drawdown = 0.0
+        for i in translated_result:
+            if i['cn'] == '收益率':
+                total_return = float(i['value'])
+            if i['cn'] == '最大回撤':
+                max_drawdown = float(i['value'])
+
         # 保存回测记录到数据库
         try:
             # 数据验证
@@ -235,15 +247,15 @@ class Backtest(object):
 
 if __name__ == '__main__':
     # 示例：使用策略类名创建Backtest实例
-    # backtest = Backtest('SmaCross', 'ETH/USDT', '15m',
-    #                     '2025-01-01', '2025-06-01', 10_000, 0.002)
-    # stats = backtest.run()
-    # print(stats)
+    backtest = Backtest('SmaCross', 'ETH/USDT', '15m',
+                        '2025-01-01', '2025-06-01', 10_000, 0.002)
+    stats = backtest.run()
+    print(stats)
 
     # 获取回测记录
-    backtest_records = BacktestRecord.select().order_by(BacktestRecord.start_time.desc())
-    for record in backtest_records:
-        print(record.to_dict())
+    # backtest_records = BacktestRecord.select().order_by(BacktestRecord.start_time.desc())
+    # for record in backtest_records:
+    #     print(record.to_dict())
         # print(record.strategy_name, record.start_time, record.end_time, record.total_return, record.max_drawdown)
     # backtest.bt.plot()
     # # 示例：获取所有策略类的名称

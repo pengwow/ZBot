@@ -17,6 +17,8 @@ strategy_params = []
 strategy_metrics = []
 
 # 获取回测记录
+
+
 def get_backtest_results():
     backtest_records = BacktestRecord.select().order_by(
         BacktestRecord.created_at.desc())
@@ -92,7 +94,9 @@ layout = html.Div(
     }
 )
 
-# 
+#
+
+
 def render_content_backtest():
     symbols = ctx.global_vars['symbols']
     strategy_options = get_strategy()
@@ -182,7 +186,8 @@ def render_content_backtest():
         ]
     )
 
-def render_content_analyze(strategy_params:list, strategy_metrics:list):
+
+def render_content_analyze(strategy_params: list, strategy_metrics: list):
     return html.Div(
         children=[
             fac.AntdCenter([
@@ -192,8 +197,8 @@ def render_content_analyze(strategy_params:list, strategy_metrics:list):
                         fac.AntdTable(
                             id='strategy_params_table',
                             columns=[
-                                {'title': '参数', 'dataIndex': 'param'},
-                                {'title': '值', 'dataIndex': 'value'},
+                                {'title': '参数', 'dataIndex': 'param', 'align': 'left'},
+                                {'title': '值', 'dataIndex': 'value', 'align': 'left'},
                             ],
                             data=strategy_params,
                             style={'width': '500px'},
@@ -205,8 +210,8 @@ def render_content_analyze(strategy_params:list, strategy_metrics:list):
                         fac.AntdTable(
                             id='strategy_metrics_table',
                             columns=[
-                                {'title': '指标', 'dataIndex': 'metric'},
-                                {'title': '值', 'dataIndex': 'value'},
+                                {'title': '指标', 'dataIndex': 'metric', 'align': 'left'},
+                                {'title': '值', 'dataIndex': 'value', 'align': 'left'},
                             ],
                             data=strategy_metrics,
                             style={'width': '500px'},
@@ -215,9 +220,10 @@ def render_content_analyze(strategy_params:list, strategy_metrics:list):
                     ], direction='vertical'),
                 ], align='start'),
             ]),
-            
+
         ]
     )
+
 
 @callback(
     Output('backtest_strategy', 'options'),
@@ -276,6 +282,20 @@ def run_backtest_server(n_clicks, form_values: dict):
         return False, ''
     return True, ''
 
+# 生成指标结构
+def gen_metric_table(data):
+    metric = data.get('cn')
+    value = data.get('value')
+    desc = data.get('desc')
+    return fac.AntdSpace([
+        fac.AntdText(metric),
+        fac.AntdTooltip(
+            [
+                fac.AntdIcon(icon='antd-exclamation-circle-two-tone'),
+            ], title=f'{desc}'
+        ) if desc else fac.Fragment()
+    ]), value
+
 # 加载,删除回测记录
 
 
@@ -304,8 +324,9 @@ def action_backtest(nClicksButton, clickedCustom):
             message = f'加载回测记录: {backtest_record.strategy_name}'
             disabled = False
             backtest_results = json.loads(backtest_record.results)
-            for i in backtest_results.items():
-                strategy_metrics.append({'metric': i[0], 'value': i[1]})
+            for i in backtest_results:
+                metric, value = gen_metric_table(i)
+                strategy_metrics.append({'metric': metric, 'value': value})
             print(strategy_metrics)
             backtest_params = json.loads(backtest_record.parameters)
             for i in backtest_params.items():
@@ -318,6 +339,16 @@ def action_backtest(nClicksButton, clickedCustom):
         MessageManager.success(content=message)
     table_data = refresh_table_data()
     return table_data, disabled
+
+
+# @callback(
+#     Output('tooltip-metric', 'title'),
+#     Input('tooltip-metric', 'color'), 
+#     )
+# def tooltip_metric_callback(color):
+#     print(color)
+#     return fac.AntdParagraph(['当前color: ',fac.AntdText(color, copyable=True)])
+    
 
 
 @callback(
@@ -337,5 +368,3 @@ def show_analyze_result_view(n_clicks):
     global strategy_params
     global strategy_metrics
     return render_content_analyze(strategy_params, strategy_metrics)
-
-
