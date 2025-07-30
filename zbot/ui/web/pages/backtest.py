@@ -15,10 +15,10 @@ dash.register_page(__name__, icon='antd-fund-projection-screen', name='回测')
 
 strategy_params = []
 strategy_metrics = []
+strategy_trades = []
+
 
 # 获取回测记录
-
-
 def get_backtest_results():
     backtest_records = BacktestRecord.select().order_by(
         BacktestRecord.created_at.desc())
@@ -187,40 +187,61 @@ def render_content_backtest():
     )
 
 
-def render_content_analyze(strategy_params: list, strategy_metrics: list):
+def render_content_analyze(strategy_params: list, strategy_metrics: list, strategy_trades: list):
     return html.Div(
         children=[
             fac.AntdCenter([
                 fac.AntdSpace([
                     fac.AntdSpace([
-                        html.H2('策略参数'),
-                        fac.AntdTable(
-                            id='strategy_params_table',
-                            columns=[
-                                {'title': '参数', 'dataIndex': 'param', 'align': 'left'},
-                                {'title': '值', 'dataIndex': 'value', 'align': 'left'},
-                            ],
-                            data=strategy_params,
-                            style={'width': '500px'},
-                            pagination=False
-                        ),
-                    ], direction='vertical'),
+                        fac.AntdSpace([
+                            html.H2('策略参数'),
+                            fac.AntdTable(
+                                id='strategy_params_table',
+                                columns=[
+                                    {'title': '参数', 'dataIndex': 'param',
+                                        'align': 'left'},
+                                    {'title': '值', 'dataIndex': 'value',
+                                        'align': 'left'},
+                                ],
+                                data=strategy_params,
+                                style={'width': '500px'},
+                                pagination=False
+                            ),
+                        ], direction='vertical'),
+                        fac.AntdSpace([
+                            html.H2('策略指标'),
+                            fac.AntdTable(
+                                id='strategy_metrics_table',
+                                columns=[
+                                    {'title': '指标', 'dataIndex': 'metric',
+                                     'align': 'left'},
+                                    {'title': '值', 'dataIndex': 'value',
+                                        'align': 'left'},
+                                ],
+                                data=strategy_metrics,
+                                style={'width': '500px'},
+                                pagination=False
+                            ),
+                        ], direction='vertical'),
+                    ], align='start'),
                     fac.AntdSpace([
-                        html.H2('策略指标'),
+                        html.H2('交易记录'),
                         fac.AntdTable(
-                            id='strategy_metrics_table',
+                            id='trade_table',
                             columns=[
-                                {'title': '指标', 'dataIndex': 'metric', 'align': 'left'},
-                                {'title': '值', 'dataIndex': 'value', 'align': 'left'},
-                            ],
-                            data=strategy_metrics,
-                            style={'width': '500px'},
-                            pagination=False
-                        ),
-                    ], direction='vertical'),
-                ], align='start'),
+                                {'title': '入场时间', 'dataIndex': 'EntryTime'},
+                                {'title': '出场时间', 'dataIndex': 'ExitTime'},
+                                {'title': '持续时间', 'dataIndex': 'Duration'},
+                                {'title': '入场价格', 'dataIndex': 'EntryPrice'},
+                                {'title': '出场价格', 'dataIndex': 'ExitPrice'},
+                                {'title': '止损', 'dataIndex': 'SL'},
+                                {'title': '止盈', 'dataIndex': 'TP'},
+                                {'title': '仓位大小', 'dataIndex': 'Size'},
+                                {'title': '标签', 'dataIndex': 'Tag'},
+                            ], data=strategy_trades
+                        , style={'width': '1000px'})], direction='vertical'),
+                ], direction='vertical'),
             ]),
-
         ]
     )
 
@@ -283,6 +304,8 @@ def run_backtest_server(n_clicks, form_values: dict):
     return True, ''
 
 # 生成指标结构
+
+
 def gen_metric_table(data):
     metric = data.get('cn')
     value = data.get('value')
@@ -315,6 +338,7 @@ def action_backtest(nClicksButton, clickedCustom):
     disabled = True
     global strategy_params
     global strategy_metrics
+    global strategy_trades
     if nClicksButton:
         if clickedCustom.get('load'):
             print(f"加载回测记录: {clickedCustom['load']}")
@@ -331,6 +355,7 @@ def action_backtest(nClicksButton, clickedCustom):
             backtest_params = json.loads(backtest_record.parameters)
             for i in backtest_params.items():
                 strategy_params.append({'param': i[0], 'value': i[1]})
+            strategy_trades = json.loads(backtest_record.trades)
         if clickedCustom.get('deleted'):
             print(f"删除回测记录: {clickedCustom['deleted']}")
             BacktestRecord.delete().where(BacktestRecord.id ==
@@ -343,12 +368,11 @@ def action_backtest(nClicksButton, clickedCustom):
 
 # @callback(
 #     Output('tooltip-metric', 'title'),
-#     Input('tooltip-metric', 'color'), 
+#     Input('tooltip-metric', 'color'),
 #     )
 # def tooltip_metric_callback(color):
 #     print(color)
 #     return fac.AntdParagraph(['当前color: ',fac.AntdText(color, copyable=True)])
-    
 
 
 @callback(
@@ -367,4 +391,5 @@ def show_run_backtest_view(n_clicks):
 def show_analyze_result_view(n_clicks):
     global strategy_params
     global strategy_metrics
-    return render_content_analyze(strategy_params, strategy_metrics)
+    global strategy_trades
+    return render_content_analyze(strategy_params, strategy_metrics, strategy_trades)

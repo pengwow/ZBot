@@ -3,9 +3,9 @@ import warnings
 import os
 import re
 import importlib
-from backtesting import Backtest as BacktestBase
+# from backtesting import Backtest as BacktestBase
 import pandas as pd
-from backtesting.lib import crossover, FractionalBacktest
+from backtesting.lib import crossover, FractionalBacktest as BacktestBase
 from zbot.services.model import get_candles_from_db
 from zbot.utils.dateutils import timestamp_to_datetime, format_datetime
 from zbot.common.config import read_config
@@ -63,7 +63,8 @@ def load_strategy_class(strategy_name, strategy_path=None):
     :return: 策略类
     """
     # 策略目录路径
-    strategies_dir = strategy_path or os.path.join(os.path.dirname(os.path.abspath(__file__)), '../strategies')
+    strategies_dir = strategy_path or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), '../strategies')
 
     # 遍历目录下的所有Python文件
     for filename in os.listdir(strategies_dir):
@@ -95,7 +96,7 @@ class CustomBacktest(BacktestBase):
     def __init__(self, *args, **kwargs):
         with warnings.catch_warnings(record=True):
             warnings.filterwarnings(action='ignore', message='frac')
-            super().__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs, fractional_unit=1e-06)
 
 
 class Backtest(object):
@@ -184,11 +185,20 @@ class Backtest(object):
         self.bt = CustomBacktest(candles, strategy_class, cash=self.cash,
                                  commission=self.commission, exclusive_orders=True)
         self.stats = self.bt.run()
-    
+        # 获取交易记录
+        trades = self.stats['_trades'].to_dict(orient='records')
+        for trade in trades:
+            for _k, _v in trade.items():
+                if isinstance(_v, datetime):
+                    trade[_k] = _v.strftime('%Y-%m-%d %H:%M:%S')
+                elif isinstance(_v, pd.Timedelta):
+                    trade[_k] = timedelta_to_localized_string(_v)
+
         # 收集回测记录数据并保存
         strategy_classes = get_strategy_class_names()
-        file_name = next((item['filename'] for item in strategy_classes if item['name'] == self.strategy), 'unknown.py')
-        
+        file_name = next(
+            (item['filename'] for item in strategy_classes if item['name'] == self.strategy), 'unknown.py')
+
         parameters = {
             'symbol': self.symbol,
             'interval': self.interval,
@@ -198,16 +208,18 @@ class Backtest(object):
             'commission': self.commission,
             'exchange': self.exchange
         }
-    
+
         # 创建结果文件目录并保存结果
-        result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../tmp/backtest_results')
+        result_dir = os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), '../../tmp/backtest_results')
         os.makedirs(result_dir, exist_ok=True)
         result_filename = f"{self.strategy}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         result_file_path = os.path.join(result_dir, result_filename)
-        
+
         with open(result_file_path, 'w', encoding='utf-8') as f:
-            json.dump(self.to_dict(self.stats), f, ensure_ascii=False, indent=2)
-        
+            json.dump(self.to_dict(self.stats), f,
+                      ensure_ascii=False, indent=2)
+
         translated_result = self.to_dict(self.stats)
         total_return = 0.0
         max_drawdown = 0.0
@@ -232,7 +244,9 @@ class Backtest(object):
                 end_time=datetime.strptime(self.end, '%Y-%m-%d'),
                 file_name=file_name,
                 parameters=json.dumps(parameters, ensure_ascii=False),
-                results=json.dumps(translated_result, ensure_ascii=False, default=str),
+                results=json.dumps(translated_result,
+                                   ensure_ascii=False, default=str),
+                trades=json.dumps(trades, ensure_ascii=False, default=str),
                 result_file_path=result_file_path,
                 total_return=float(total_return),
                 max_drawdown=float(max_drawdown)
@@ -241,7 +255,7 @@ class Backtest(object):
         except Exception as e:
             logger.error(f"保存回测记录失败: {str(e)}", exc_info=True)
             raise  # 重新抛出异常以便上层处理
-        
+
         return translated_result
 
 
@@ -256,7 +270,7 @@ if __name__ == '__main__':
     # backtest_records = BacktestRecord.select().order_by(BacktestRecord.start_time.desc())
     # for record in backtest_records:
     #     print(record.to_dict())
-        # print(record.strategy_name, record.start_time, record.end_time, record.total_return, record.max_drawdown)
+    # print(record.strategy_name, record.start_time, record.end_time, record.total_return, record.max_drawdown)
     # backtest.bt.plot()
     # # 示例：获取所有策略类的名称
     # strategy_names = get_strategy_class_names()

@@ -8,17 +8,18 @@ from zbot.services.db import database
 class BacktestRecord(peewee.Model):
     """回测记录模型，用于存储策略回测的历史记录"""
     id = peewee.AutoField(primary_key=True)
-    strategy_name = peewee.CharField(max_length=100, help_text="策略名称")
-    start_time = peewee.DateTimeField(help_text="回测开始时间")
-    end_time = peewee.DateTimeField(help_text="回测结束时间")
-    file_name = peewee.CharField(max_length=255, help_text="策略文件名")
-    parameters = peewee.TextField(help_text="策略参数，JSON格式字符串")
-    results = peewee.TextField(help_text="回测结果数据，JSON格式字符串")
-    result_file_path = peewee.CharField(max_length=255, help_text="回测结果文件路径")
+    strategy_name = peewee.CharField(max_length=100, help_text="策略名称", null=True)
+    start_time = peewee.DateTimeField(help_text="回测开始时间", null=True)
+    end_time = peewee.DateTimeField(help_text="回测结束时间", null=True)
+    file_name = peewee.CharField(max_length=255, help_text="策略文件名", null=True)
+    parameters = peewee.TextField(help_text="策略参数，JSON格式字符串", null=True)
+    results = peewee.TextField(help_text="回测结果数据，JSON格式字符串", null=True)
+    trades = peewee.TextField(help_text="回测交易记录，JSON格式字符串", null=True)
+    result_file_path = peewee.CharField(max_length=255, help_text="回测结果文件路径", null=True)
     status = peewee.CharField(
-        max_length=20, default="completed", help_text="回测状态: running/completed/failed")
-    total_return = peewee.FloatField(help_text="总收益率")
-    max_drawdown = peewee.FloatField(help_text="最大回撤")
+        max_length=20, default="completed", help_text="回测状态: running/completed/failed", null=True)
+    total_return = peewee.FloatField(help_text="总收益率", null=True)
+    max_drawdown = peewee.FloatField(help_text="最大回撤", null=True)
     created_at = peewee.DateTimeField(default=datetime.now, help_text="记录创建时间")
 
     @classmethod
