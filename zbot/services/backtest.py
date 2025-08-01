@@ -193,6 +193,10 @@ class Backtest(object):
                     trade[_k] = _v.strftime('%Y-%m-%d %H:%M:%S')
                 elif isinstance(_v, pd.Timedelta):
                     trade[_k] = timedelta_to_localized_string(_v)
+            if trade.get('Size', 0) > 0:
+                trade['Direction'] = '多单'
+            else:
+                trade['Direction'] = '空单'
 
         # 收集回测记录数据并保存
         strategy_classes = get_strategy_class_names()
