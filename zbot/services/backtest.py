@@ -197,6 +197,8 @@ class Backtest(object):
                 trade['Direction'] = '多单'
             else:
                 trade['Direction'] = '空单'
+        # 获取策略数据
+        strategy_data = self.stats['_strategy'].data.df.to_dict(orient='records')
 
         # 收集回测记录数据并保存
         strategy_classes = get_strategy_class_names()
@@ -251,6 +253,7 @@ class Backtest(object):
                 results=json.dumps(translated_result,
                                    ensure_ascii=False, default=str),
                 trades=json.dumps(trades, ensure_ascii=False, default=str),
+                strategy=json.dumps(strategy_data, ensure_ascii=False),
                 result_file_path=result_file_path,
                 total_return=float(total_return),
                 max_drawdown=float(max_drawdown)

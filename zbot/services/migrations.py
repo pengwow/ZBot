@@ -56,6 +56,7 @@ class MigrationManager:
             f.write(f"迁移文件: {migration_name}\n")
             f.write(f"生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"\"\"\"\n")
+            f.write(f"import peewee\n")
             f.write(f"from playhouse.migrate import migrate\n")
             f.write(f"from zbot.services.db import database\n")
             f.write(f"from playhouse.migrate import SqliteMigrator\n\n")

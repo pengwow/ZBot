@@ -1,3 +1,4 @@
 [
-  "20250730133508_initial_migration.py"
+  "20250730133508_initial_migration.py",
+  "20250802235458_add_strategy_to_backtest_record.py"
 ]

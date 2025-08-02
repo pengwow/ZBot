@@ -12,6 +12,7 @@ class BacktestRecord(peewee.Model):
     start_time = peewee.DateTimeField(help_text="回测开始时间", null=True)
     end_time = peewee.DateTimeField(help_text="回测结束时间", null=True)
     file_name = peewee.CharField(max_length=255, help_text="策略文件名", null=True)
+    strategy = peewee.TextField(help_text="策略数据", null=True)
     parameters = peewee.TextField(help_text="策略参数，JSON格式字符串", null=True)
     results = peewee.TextField(help_text="回测结果数据，JSON格式字符串", null=True)
     trades = peewee.TextField(help_text="回测交易记录，JSON格式字符串", null=True)

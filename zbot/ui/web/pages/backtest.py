@@ -1,15 +1,18 @@
 import json
 import time
+import pandas as pd
 from calendar import c
 from click.utils import R
+import numpy as np
+from datetime import datetime, timedelta
 import dash
-from dash import html, dcc, callback, Input, Output, State, ctx
+from dash import html, dcc, callback, Input, Output, State, ctx, callback_context
 import feffery_utils_components as fuc
 import feffery_antd_components as fac
 from zbot.services.backtest import get_strategy_class_names, Backtest
 from zbot.models.backtest import BacktestRecord
 from zbot.ui.web.utils.feedback import MessageManager
-
+from zbot.ui.web.utils.candlestick_chart import create_candlestick_chart
 # 注册pages
 dash.register_page(__name__, icon='antd-fund-projection-screen', name='回测')
 
@@ -17,7 +20,7 @@ dash.register_page(__name__, icon='antd-fund-projection-screen', name='回测')
 strategy_params = []
 strategy_metrics = []
 strategy_trades = []
-
+strategy_strategy = []
 
 # 获取回测记录
 def get_backtest_results():
@@ -249,32 +252,41 @@ def render_content_analyze(strategy_params: list, strategy_metrics: list, strate
     )
 
 
-def render_content_visualize(strategy_trades: list):
+def render_content_visualize(strategy_trades: list, strategy_strategy: list):
+    # df = pd.DataFrame(strategy_trades)
+    # 初始化数据，将strategy_trades中的数据转换为candlestick_chart需要的格式
+    chart_data = []
+    for data in strategy_strategy:
+        chart_data.append({
+            'x': data['close_time'],
+            'open': data['Open'],
+            'close': data['Close'],
+            'high': data['High'],
+            'low': data['Low'],
+            'volume': data['Volume'],
+        })
     return html.Div([
         fac.AntdCenter([
             fac.AntdSpace([
-                fac.AntdButton('播放', id='play-btn', icon=fac.AntdIcon(mode='iconfont',
+                fac.AntdButton('播放', id='play-button', icon=fac.AntdIcon(mode='iconfont',
                                                                       scriptUrl='assets/font/iconfont.js', icon='icon-a-mti-bofangshi')),
-                fac.AntdButton('暂停', id='pause-btn', icon=fac.AntdIcon(mode='iconfont',
+                fac.AntdButton('暂停', id='pause-button', icon=fac.AntdIcon(mode='iconfont',
                                                                        scriptUrl='assets/font/iconfont.js', icon='icon-a-mti-zanting2shi')),
-                fac.AntdButton('停止', id='stop-btn', icon=fac.AntdIcon(mode='iconfont',
+                fac.AntdButton('停止', id='stop-button', icon=fac.AntdIcon(mode='iconfont',
                                                                       scriptUrl='assets/font/iconfont.js', icon='icon-a-mti-tingzhi2shi')),
-                fac.AntdButton('重置', id='reset-btn', icon=fac.AntdIcon(mode='iconfont',
+                fac.AntdButton('重置', id='reset-button', icon=fac.AntdIcon(mode='iconfont',
                                                                        scriptUrl='assets/font/iconfont.js', icon='icon-mti-zhongzhi')),
             ]),
         ]),
 
-        dcc.Graph(
-            id='candle_graph',
-            figure={
-                'data': [],
-                'layout': {
-                    'title': 'Candle Graph',
-                    'xaxis': {'title': 'Time'},
-                    'yaxis': {'title': 'Price'},
-                }
-            }
-        )
+        dcc.Graph(id='candlestick-chart', config={'displayModeBar': True}),
+        dcc.Interval(
+            id='interval-component',
+            interval=500,  # 默认500毫秒更新一次
+            n_intervals=0,
+            disabled=True  # 初始禁用
+        ),
+        dcc.Store(id='data-store', data=chart_data)
     ])
 
 
@@ -336,8 +348,6 @@ def run_backtest_server(n_clicks, form_values: dict):
     return True, ''
 
 # 生成指标结构
-
-
 def gen_metric_table(data):
     metric = data.get('cn')
     value = data.get('value')
@@ -372,9 +382,11 @@ def action_backtest(nClicksButton, clickedCustom):
     global strategy_params
     global strategy_metrics
     global strategy_trades
+    global strategy_strategy
     strategy_metrics = []
     strategy_params = []
     strategy_metrics = []
+    strategy_strategy = []
     if nClicksButton:
         if clickedCustom.get('load'):
             print(f"加载回测记录: {clickedCustom['load']}")
@@ -392,6 +404,7 @@ def action_backtest(nClicksButton, clickedCustom):
             for i in backtest_params.items():
                 strategy_params.append({'param': i[0], 'value': i[1]})
             strategy_trades = json.loads(backtest_record.trades)
+            strategy_strategy = json.loads(backtest_record.strategy)
         if clickedCustom.get('deleted'):
             print(f"删除回测记录: {clickedCustom['deleted']}")
             BacktestRecord.delete().where(BacktestRecord.id ==
@@ -440,8 +453,9 @@ def show_visualize_result_view(n_clicks):
     global strategy_trades
     global strategy_params
     global strategy_metrics
+    global strategy_strategy
     if n_clicks:
-        return render_content_visualize(strategy_trades)
+        return render_content_visualize(strategy_trades, strategy_strategy)
     return render_content_analyze(strategy_params, strategy_metrics, strategy_trades)
 
 
@@ -512,6 +526,140 @@ def reset_button_callback(n_clicks):
         }
     }
 
+def generate_ohlc_data(existing_data, new_points=1, trend_strength=0.1):
+    """
+    从strategy_strategy获取真实的OHLC数据
+    参数:
+        existing_data: 现有数据DataFrame
+        new_points: 要获取的新数据点数
+        trend_strength: 趋势强度参数(此实现中未使用)
+    返回:
+        包含新数据的DataFrame
+    """
+    try:
+        global strategy_strategy
+        
+        if not strategy_strategy:
+            print("Warning: strategy_strategy is empty")
+            return existing_data
+        
+        # 如果existing_data为空，则从strategy_strategy的开始获取数据
+        if existing_data.empty:
+            start_idx = 0
+        else:
+            # 尝试找到现有数据最后一条记录对应的索引
+            last_date = existing_data['Date'].iloc[-1]
+            # 查找strategy_strategy中对应的位置
+            start_idx = 0
+            for i, data in enumerate(strategy_strategy):
+                if pd.to_datetime(data['close_time']) > last_date:
+                    start_idx = i
+                    break
+        
+        # 获取新数据点
+        end_idx = start_idx + new_points
+        new_data_list = strategy_strategy[start_idx:end_idx]
+        
+        # 转换为DataFrame
+        new_data = pd.DataFrame({
+            'Date': [pd.to_datetime(item['close_time']) for item in new_data_list],
+            'Open': [item['Open'] for item in new_data_list],
+            'High': [item['High'] for item in new_data_list],
+            'Low': [item['Low'] for item in new_data_list],
+            'Close': [item['Close'] for item in new_data_list],
+            'Volume': [item['Volume'] for item in new_data_list]
+        })
+        
+        # 合并现有数据和新数据，并保留最近50根K线
+        combined_data = pd.concat([existing_data, new_data]).iloc[-50:]
+        return combined_data
+    
+    except Exception as e:
+        print(f"数据获取错误: {e}")
+        import traceback
+        traceback.print_exc()
+        return existing_data
 
+@callback(
+    [Output('candlestick-chart', 'figure'),
+     Output('interval-component', 'disabled'),
+     Output('interval-component', 'interval'),
+     Output('data-store', 'data')],
+    [Input('interval-component', 'n_intervals'),
+     Input('play-button', 'nClicks'),
+     Input('pause-button', 'nClicks'),
+     Input('stop-button', 'nClicks'),
+    #  Input('speed-slider', 'value')
+     ],
+    [State('data-store', 'data')]
+)
+def update_chart(n_intervals, play_clicks, pause_clicks, stop_clicks,data_store):
+    """
+    更新蜡烛图图表
+    参数:
+        n_intervals: 时间间隔计数
+        play_clicks: 播放按钮点击次数
+        pause_clicks: 暂停按钮点击次数
+        stop_clicks: 停止按钮点击次数
+        speed_value: 播放速度值
+        data_store: 存储的数据
+    返回:
+        更新后的图表配置、时间间隔禁用状态、新的时间间隔、更新后的数据
+    """
+    # 确定哪个输入被触发
+    _ctx = callback_context
+    trigger_id = _ctx.triggered[0]['prop_id'].split('.')[0] if _ctx.triggered else None
+
+    # 初始化或获取当前数据
+    if data_store is None or trigger_id == 'stop-button':
+        # 初始加载或停止按钮被点击，使用初始数据
+        global strategy_strategy
+        if strategy_strategy:
+            # 从strategy_strategy获取初始数据
+            initial_data = pd.DataFrame({
+                'Date': [pd.to_datetime(item['close_time']) for item in strategy_strategy[:50]],
+                'Open': [item['Open'] for item in strategy_strategy[:50]],
+                'High': [item['High'] for item in strategy_strategy[:50]],
+                'Low': [item['Low'] for item in strategy_strategy[:50]],
+                'Close': [item['Close'] for item in strategy_strategy[:50]],
+                'Volume': [item['Volume'] for item in strategy_strategy[:50]]
+            })
+        else:
+            # 如果strategy_strategy为空，创建空DataFrame
+            initial_data = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume'])
+        df = initial_data
+    else:
+        # 从存储中获取数据
+        df = pd.DataFrame(data_store)
+        # 将Date列转换为datetime类型
+        try:
+            df['Date'] = pd.to_datetime(df['Date'])
+        except Exception as e:
+            print(f"Error converting Date column to datetime: {e}")
+            # 如果转换失败，使用当前时间作为备选
+            df['Date'] = pd.date_range(
+                end=datetime.now(), periods=len(df), freq='T')
+
+        # 如果是时间间隔触发，获取新数据
+        if trigger_id == 'interval-component':
+            df = generate_ohlc_data(df, new_points=1)
+
+    fig = create_candlestick_chart(df)
+
+    # 处理按钮点击
+    if trigger_id == 'play-button':
+        disabled = False
+    elif trigger_id == 'pause-button':
+        disabled = True
+    elif trigger_id == 'stop-button':
+        disabled = True
+    else:
+        # 如果是其他触发（如滑块），保持当前状态
+        disabled = data_store is None
+
+    # 转换速度值为毫秒（speed_value是秒/根K线）
+    interval = int(0.2 * 1000)
+
+    return fig, disabled, interval, df.to_dict('records')
 
 
