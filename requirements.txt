@@ -18,5 +18,7 @@ dash==3.1.1
 nbformat==5.10.4
 #dash-bootstrap-components==2.0.3
 feffery_antd_components==0.4.0
+feffery-antd-charts==0.2.0
 feffery_utils_components
+dash-renderer==1.9.1
 # autopep8==2.3.2

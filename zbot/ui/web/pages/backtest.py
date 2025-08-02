@@ -1,6 +1,7 @@
 import json
 import time
 from calendar import c
+from click.utils import R
 import dash
 from dash import html, dcc, callback, Input, Output, State, ctx
 import feffery_utils_components as fuc
@@ -241,12 +242,40 @@ def render_content_analyze(strategy_params: list, strategy_metrics: list, strate
                                 {'title': '盈亏', 'dataIndex': 'PnL'},
                                 {'title': '收益率', 'dataIndex': 'ReturnPct'},
                                 {'title': '标签', 'dataIndex': 'Tag'},
-                            ], data=strategy_trades
-                        , style={'width': '1000px'})], direction='vertical'),
+                            ], data=strategy_trades, style={'width': '1000px'})], direction='vertical'),
                 ], direction='vertical'),
             ]),
         ]
     )
+
+
+def render_content_visualize(strategy_trades: list):
+    return html.Div([
+        fac.AntdCenter([
+            fac.AntdSpace([
+                fac.AntdButton('播放', id='play-btn', icon=fac.AntdIcon(mode='iconfont',
+                                                                      scriptUrl='assets/font/iconfont.js', icon='icon-a-mti-bofangshi')),
+                fac.AntdButton('暂停', id='pause-btn', icon=fac.AntdIcon(mode='iconfont',
+                                                                       scriptUrl='assets/font/iconfont.js', icon='icon-a-mti-zanting2shi')),
+                fac.AntdButton('停止', id='stop-btn', icon=fac.AntdIcon(mode='iconfont',
+                                                                      scriptUrl='assets/font/iconfont.js', icon='icon-a-mti-tingzhi2shi')),
+                fac.AntdButton('重置', id='reset-btn', icon=fac.AntdIcon(mode='iconfont',
+                                                                       scriptUrl='assets/font/iconfont.js', icon='icon-mti-zhongzhi')),
+            ]),
+        ]),
+
+        dcc.Graph(
+            id='candle_graph',
+            figure={
+                'data': [],
+                'layout': {
+                    'title': 'Candle Graph',
+                    'xaxis': {'title': 'Time'},
+                    'yaxis': {'title': 'Price'},
+                }
+            }
+        )
+    ])
 
 
 @callback(
@@ -328,6 +357,7 @@ def gen_metric_table(data):
 @callback(
     Output('candle_table', 'data'),
     Output('analyze-result-btn', 'disabled', allow_duplicate=True),
+    Output('visualize-result-btn', 'disabled', allow_duplicate=True),
     # Output('strategy_params_table', 'data'),
     # Output('strategy_metrics_table', 'data'),
     Input(f'candle_table', 'nClicksButton'),
@@ -342,6 +372,9 @@ def action_backtest(nClicksButton, clickedCustom):
     global strategy_params
     global strategy_metrics
     global strategy_trades
+    strategy_metrics = []
+    strategy_params = []
+    strategy_metrics = []
     if nClicksButton:
         if clickedCustom.get('load'):
             print(f"加载回测记录: {clickedCustom['load']}")
@@ -366,7 +399,7 @@ def action_backtest(nClicksButton, clickedCustom):
             message = f'删除成功'
         MessageManager.success(content=message)
     table_data = refresh_table_data()
-    return table_data, disabled
+    return table_data, disabled, disabled
 
 
 # @callback(
@@ -396,3 +429,89 @@ def show_analyze_result_view(n_clicks):
     global strategy_metrics
     global strategy_trades
     return render_content_analyze(strategy_params, strategy_metrics, strategy_trades)
+
+
+@callback(
+    Output('run-backtest-view', 'children', allow_duplicate=True),
+    Input('visualize-result-btn', 'nClicks'),
+    prevent_initial_call=True,
+)
+def show_visualize_result_view(n_clicks):
+    global strategy_trades
+    global strategy_params
+    global strategy_metrics
+    if n_clicks:
+        return render_content_visualize(strategy_trades)
+    return render_content_analyze(strategy_params, strategy_metrics, strategy_trades)
+
+
+@callback(
+    Output('candle_graph', 'figure'),
+    Input('play-btn', 'nClicks'),
+    State('candle_graph', 'figure'),
+    prevent_initial_call=True,
+)
+def play_button_callback(n_clicks, figure):
+    # 播放按钮回调逻辑
+    # 这里可以实现图表的动画播放功能
+    print('播放按钮被点击')
+    # 示例: 更新图表以开始动画
+    figure['layout']['animation'] = {'duration': 1000, 'easing': 'linear'}
+    return figure
+
+
+@callback(
+    Output('candle_graph', 'figure', allow_duplicate=True),
+    Input('pause-btn', 'nClicks'),
+    State('candle_graph', 'figure'),
+    prevent_initial_call=True,
+)
+def pause_button_callback(n_clicks, figure):
+    # 暂停按钮回调逻辑
+    # 这里可以实现图表动画的暂停功能
+    print('暂停按钮被点击')
+    # 示例: 暂停图表动画
+    if 'animation' in figure['layout']:
+        figure['layout'].pop('animation')
+    return figure
+
+
+@callback(
+    Output('candle_graph', 'figure', allow_duplicate=True),
+    Input('stop-btn', 'nClicks'),
+    State('candle_graph', 'figure'),
+    prevent_initial_call=True,
+)
+def stop_button_callback(n_clicks, figure):
+    # 停止按钮回调逻辑
+    # 这里可以实现图表动画的停止功能
+    print('停止按钮被点击')
+    # 示例: 停止图表动画并重置到初始状态
+    if 'animation' in figure['layout']:
+        figure['layout'].pop('animation')
+    # 可以在这里重置图表数据或视图
+    return figure
+
+
+@callback(
+    Output('candle_graph', 'figure', allow_duplicate=True),
+    Input('reset-btn', 'nClicks'),
+    prevent_initial_call=True,
+)
+def reset_button_callback(n_clicks):
+    # 重置按钮回调逻辑
+    # 这里可以实现图表的重置功能
+    print('重置按钮被点击')
+    # 示例: 重置图表到初始状态
+    return {
+        'data': [],
+        'layout': {
+            'title': 'Candle Graph',
+            'xaxis': {'title': 'Time'},
+            'yaxis': {'title': 'Price'},
+        }
+    }
+
+
+
+

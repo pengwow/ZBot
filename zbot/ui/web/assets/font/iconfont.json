@@ -1,0 +1,79 @@
+{
+  "id": "4989907",
+  "name": "zbot",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "42852549",
+      "name": "mti-回放",
+      "font_class": "mti-huifang",
+      "unicode": "e8f7",
+      "unicode_decimal": 59639
+    },
+    {
+      "icon_id": "42854622",
+      "name": "mti-重置",
+      "font_class": "mti-zhongzhi",
+      "unicode": "e90f",
+      "unicode_decimal": 59663
+    },
+    {
+      "icon_id": "13186961",
+      "name": "refresh",
+      "font_class": "refresh",
+      "unicode": "e600",
+      "unicode_decimal": 58880
+    },
+    {
+      "icon_id": "19665311",
+      "name": "网页-刷新",
+      "font_class": "shuaxin",
+      "unicode": "e61d",
+      "unicode_decimal": 58909
+    },
+    {
+      "icon_id": "42852004",
+      "name": "mti-播放(实)",
+      "font_class": "a-mti-bofangshi",
+      "unicode": "e8e8",
+      "unicode_decimal": 59624
+    },
+    {
+      "icon_id": "42852374",
+      "name": "mti-分屏-1分屏(实)",
+      "font_class": "a-mti-fenping-1fenpingshi",
+      "unicode": "e8ee",
+      "unicode_decimal": 59630
+    },
+    {
+      "icon_id": "42853463",
+      "name": "mti-停止2(实)",
+      "font_class": "a-mti-tingzhi2shi",
+      "unicode": "e904",
+      "unicode_decimal": 59652
+    },
+    {
+      "icon_id": "42854552",
+      "name": "mti-暂停2",
+      "font_class": "mti-zanting2",
+      "unicode": "e90d",
+      "unicode_decimal": 59661
+    },
+    {
+      "icon_id": "42854554",
+      "name": "mti-暂停2(实)",
+      "font_class": "a-mti-zanting2shi",
+      "unicode": "e90e",
+      "unicode_decimal": 59662
+    },
+    {
+      "icon_id": "5286019",
+      "name": "播放暂停",
+      "font_class": "bofangzanting",
+      "unicode": "e6aa",
+      "unicode_decimal": 59050
+    }
+  ]
+}
