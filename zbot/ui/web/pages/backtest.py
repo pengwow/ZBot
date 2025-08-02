@@ -27,7 +27,7 @@ def get_backtest_results():
     backtest_records = BacktestRecord.select().order_by(
         BacktestRecord.created_at.desc())
     backtest_records = [record.to_dict() for record in backtest_records]
-    print(backtest_records)
+    # print(backtest_records)
 
     return backtest_records
 
@@ -257,14 +257,28 @@ def render_content_visualize(strategy_trades: list, strategy_strategy: list):
     # 初始化数据，将strategy_trades中的数据转换为candlestick_chart需要的格式
     chart_data = []
     for data in strategy_strategy:
-        chart_data.append({
-            'x': data['close_time'],
-            'open': data['Open'],
-            'close': data['Close'],
-            'high': data['High'],
-            'low': data['Low'],
-            'volume': data['Volume'],
-        })
+        # 添加错误处理，确保键存在
+        try:
+            chart_data.append({
+                'Date': data.get('close_time', ''),
+                'Open': data.get('Open', 0) if 'Open' in data else data.get('open', 0),
+                'Close': data.get('Close', 0) if 'Close' in data else data.get('close', 0),
+                'High': data.get('High', 0) if 'High' in data else data.get('high', 0),
+                'Low': data.get('Low', 0) if 'Low' in data else data.get('low', 0),
+                'Volume': data.get('Volume', 0) if 'Volume' in data else data.get('volume', 0),
+            })
+        except Exception as e:
+            print(f"Error processing data item: {e}")
+            print(f"Problematic data: {data}")
+            # 添加默认值以继续执行
+            chart_data.append({
+                'Date': '',
+                'Open': 0,
+                'Close': 0,
+                'High': 0,
+                'Low': 0,
+                'Volume': 0
+            })
     return html.Div([
         fac.AntdCenter([
             fac.AntdSpace([
@@ -305,7 +319,7 @@ def refresh_backtest_btn(n_clicks):
     prevent_initial_call=True,
 )
 def load_config(data):
-    print(f"回测页面获取data: {data}")
+    # print(f"回测页面获取data: {data}")
     if data:
         return data[0]['value']
     return ''
@@ -322,7 +336,7 @@ def load_config(data):
 )
 def run_backtest_server(n_clicks, form_values: dict):
     if n_clicks:
-        print(form_values)
+        # print(form_values)
         if not form_values.get('backtest_strategy'):
             return False, '请选择策略'
         if not form_values.get('symbol'):
@@ -343,7 +357,7 @@ def run_backtest_server(n_clicks, form_values: dict):
                       start=form_values['start_date'],
                       end=form_values['end_date'])
         stats = bt.run()
-        print(stats)
+        # print(stats)
         return False, ''
     return True, ''
 
@@ -552,22 +566,52 @@ def generate_ohlc_data(existing_data, new_points=1, trend_strength=0.1):
             # 查找strategy_strategy中对应的位置
             start_idx = 0
             for i, data in enumerate(strategy_strategy):
-                if pd.to_datetime(data['close_time']) > last_date:
-                    start_idx = i
-                    break
+                try:
+                    if pd.to_datetime(data.get('close_time', '')) > last_date:
+                        start_idx = i
+                        break
+                except Exception as e:
+                    print(f"Error processing date for index {i}: {e}")
+                    continue
         
         # 获取新数据点
         end_idx = start_idx + new_points
         new_data_list = strategy_strategy[start_idx:end_idx]
         
-        # 转换为DataFrame
+        # 转换为DataFrame，添加错误处理
+        dates = []
+        opens = []
+        highs = []
+        lows = []
+        closes = []
+        volumes = []
+        
+        for data in new_data_list:
+            try:
+                dates.append(pd.to_datetime(data.get('close_time', '')))
+                opens.append(data.get('Open', 0) if 'Open' in data else data.get('open', 0))
+                highs.append(data.get('High', 0) if 'High' in data else data.get('high', 0))
+                lows.append(data.get('Low', 0) if 'Low' in data else data.get('low', 0))
+                closes.append(data.get('Close', 0) if 'Close' in data else data.get('close', 0))
+                volumes.append(data.get('Volume', 0) if 'Volume' in data else data.get('volume', 0))
+            except Exception as e:
+                print(f"Error processing data item: {e}")
+                print(f"Problematic data: {data}")
+                # 添加默认值以继续执行
+                dates.append(pd.to_datetime(''))
+                opens.append(0)
+                highs.append(0)
+                lows.append(0)
+                closes.append(0)
+                volumes.append(0)
+        
         new_data = pd.DataFrame({
-            'Date': [pd.to_datetime(item['close_time']) for item in new_data_list],
-            'Open': [item['Open'] for item in new_data_list],
-            'High': [item['High'] for item in new_data_list],
-            'Low': [item['Low'] for item in new_data_list],
-            'Close': [item['Close'] for item in new_data_list],
-            'Volume': [item['Volume'] for item in new_data_list]
+            'Date': dates,
+            'Open': opens,
+            'High': highs,
+            'Low': lows,
+            'Close': closes,
+            'Volume': volumes
         })
         
         # 合并现有数据和新数据，并保留最近50根K线
@@ -633,7 +677,7 @@ def update_chart(n_intervals, play_clicks, pause_clicks, stop_clicks,data_store)
         df = pd.DataFrame(data_store)
         # 将Date列转换为datetime类型
         try:
-            df['Date'] = pd.to_datetime(df['Date'])
+            df['Date'] = pd.to_datetime(df['close_time'])
         except Exception as e:
             print(f"Error converting Date column to datetime: {e}")
             # 如果转换失败，使用当前时间作为备选
@@ -643,7 +687,7 @@ def update_chart(n_intervals, play_clicks, pause_clicks, stop_clicks,data_store)
         # 如果是时间间隔触发，获取新数据
         if trigger_id == 'interval-component':
             df = generate_ohlc_data(df, new_points=1)
-
+    print(df.columns)
     fig = create_candlestick_chart(df)
 
     # 处理按钮点击

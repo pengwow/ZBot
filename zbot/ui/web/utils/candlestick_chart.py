@@ -3,6 +3,7 @@ import pandas as pd
 
 # 创建蜡烛图
 def create_candlestick_chart(df: pd.DataFrame) -> go.Figure:
+    print(df.columns)
     # 自定义悬停模板
     hovertext = (
         f"日期: {df['Date'].iloc[-1]}<br>"
@@ -14,12 +15,11 @@ def create_candlestick_chart(df: pd.DataFrame) -> go.Figure:
     )
     # 创建蜡烛图
     fig = go.Figure(data=[go.Candlestick(
-        x=df['close_time'],
+        x=df['Date'],
         open=df['Open'],
         high=df['High'],
         low=df['Low'],
         close=df['Close'],
-        volume=df['Volume'],
         increasing_line_color='green',
         decreasing_line_color='red',
         hoverinfo='text',
