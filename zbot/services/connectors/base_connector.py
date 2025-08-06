@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import json
 import os
-from zbot.trading.events import event_bus, EventType, MarketDataEvent, OrderEvent
+from zbot.services.events import event_bus, EventType, MarketDataEvent, OrderEvent
 
 
 class AsyncExchange(ABC):

@@ -2,7 +2,7 @@ from abc import abstractmethod
 import asyncio
 from typing import Dict, List, Optional, Any
 from zbot.strategies.base_strategy import BaseStrategy
-from zbot.trading.events import event_bus, EventType
+from zbot.services.events import event_bus, EventType
 
 
 class AsyncBaseStrategy(BaseStrategy):

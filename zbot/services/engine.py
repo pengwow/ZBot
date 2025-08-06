@@ -2,13 +2,13 @@ import asyncio
 import json
 import os
 from typing import Dict, List, Optional, Type
-from zbot.trading.connectors.base_connector import AsyncExchange
-from zbot.trading.strategy import AsyncBaseStrategy, AsyncDataProvider
-from zbot.trading.connectors.binance_connector import AsyncBinanceExchange
+from zbot.services.connectors.base_connector import AsyncExchange
+from zbot.services.strategy import AsyncBaseStrategy, AsyncDataProvider
+from zbot.exchange.binance import create_async_connector
 from zbot.common.config import read_config
 
 
-class TradingEngine(object):
+class Engine(object):
     """实盘交易引擎，协调连接器、数据提供器和策略的执行"""
     def __init__(self, config: Optional[Dict] = None):
         self.config = config or read_config('trading', default={})
@@ -94,7 +94,7 @@ class TradingEngine(object):
     def _get_connector_class(self, exchange_type: str) -> Optional[Type[AsyncExchange]]:
         """获取连接器类"""
         connector_map = {
-            'binance': AsyncBinanceExchange,
+            'binance': create_async_connector,
             # 可添加其他交易所连接器
         }
         return connector_map.get(exchange_type.lower())
@@ -216,7 +216,7 @@ async def main():
         return
 
     # 启动交易引擎
-    engine = TradingEngine(config)
+    engine = Engine(config)
     try:
         await engine.initialize()
         await engine.start()

@@ -405,7 +405,7 @@ if __name__ == '__main__':
     #     'https': config.get('proxy_url'),
     #     'http': config.get('proxy_url')
     # }
-    from zbot.exchange.binance.client import BinanceExchange
+    from zbot.exchange.binance.connector import BinanceExchange
     exchange = BinanceExchange(**{
         'api_key': config.get('api_key'),
         'secret_key': config.get('secret_key'),
