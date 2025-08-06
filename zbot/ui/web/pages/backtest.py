@@ -9,7 +9,8 @@ import dash
 from dash import html, dcc, callback, Input, Output, State, ctx, callback_context
 import feffery_utils_components as fuc
 import feffery_antd_components as fac
-from zbot.services.backtest import get_strategy_class_names, Backtest
+from zbot.strategies.strategy_loader import get_strategy_class_names
+from zbot.services.backtest import Backtest
 from zbot.models.backtest import BacktestRecord
 from zbot.ui.web.utils.feedback import MessageManager
 from zbot.ui.web.utils.candlestick_chart import create_candlestick_chart
