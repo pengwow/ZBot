@@ -2,6 +2,7 @@
 .venv/
 .vscode/
 .vercel/
+.pytest_cache/
 .env
 *.pyc
 zbot/zbot.db
