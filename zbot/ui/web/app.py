@@ -1,3 +1,7 @@
+import os
+import json
+from datetime import datetime, timedelta
+import shutil
 from flask import Flask
 import dash
 from dash import Dash, html, dcc, Output, Input, callback, ctx
@@ -109,10 +113,39 @@ class App(Dash):
         return data
 
     def init_exchange(self):
+        self.exchange = ExchangeFactory.create_exchange(self.config_data['exchange']['name'])
+        # 确保data目录存在
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'data')
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+            print(f'创建数据目录: {data_dir}')
+
+        # 缓存文件路径
+        cache_file = os.path.join(data_dir, 'exchange_cache.json')
+        self._symbols = None
+
         try:
-            self.exchange = ExchangeFactory.create_exchange(
-                self.config_data['exchange']['name'])
-            self._symbols = self.exchange.symbols
+            # 检查缓存文件是否存在且未过期（1天）
+            if os.path.exists(cache_file):
+                file_mtime = datetime.fromtimestamp(os.path.getmtime(cache_file))
+                if datetime.now() - file_mtime < timedelta(days=1):
+                    # 读取缓存文件
+                    with open(cache_file, 'r') as f:
+                        cache_data = json.load(f)
+                    self._symbols = cache_data.get('symbols')
+                    print(f'使用缓存数据，缓存时间: {file_mtime}')
+
+            # 如果没有缓存或缓存过期，则从交易所获取数据
+            if self._symbols is None:
+
+                self._symbols = self.exchange.symbols
+                print(f'从交易所获取数据成功，共{len(self._symbols)}个交易对')
+
+                # 写入缓存文件
+                with open(cache_file, 'w') as f:
+                    json.dump({'symbols': self._symbols, 'update_time': datetime.now().isoformat()}, f, indent=2)
+                print(f'数据已缓存至: {cache_file}')
+
         except Exception as e:
             print(f"初始化交易所失败: {e}")
             self.exchange = None

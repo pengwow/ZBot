@@ -260,7 +260,7 @@ def render_content_visualize(strategy_trades: list, strategy_strategy: list):
         # 添加错误处理，确保键存在
         try:
             chart_data.append({
-                'Date': data.get('close_time', ''),
+                'Date': data.get('Date', '') if data.get('Date', '') else data.get('close_time', ''),
                 'Open': data.get('Open', 0) if 'Open' in data else data.get('open', 0),
                 'Close': data.get('Close', 0) if 'Close' in data else data.get('close', 0),
                 'High': data.get('High', 0) if 'High' in data else data.get('high', 0),
@@ -588,7 +588,8 @@ def generate_ohlc_data(existing_data, new_points=1, trend_strength=0.1):
         
         for data in new_data_list:
             try:
-                dates.append(pd.to_datetime(data.get('close_time', '')))
+                _date = data.get('Date', '') if data.get('Date', '') else data.get('close_time', '')
+                dates.append(pd.to_datetime(_date))
                 opens.append(data.get('Open', 0) if 'Open' in data else data.get('open', 0))
                 highs.append(data.get('High', 0) if 'High' in data else data.get('high', 0))
                 lows.append(data.get('Low', 0) if 'Low' in data else data.get('low', 0))
@@ -677,7 +678,10 @@ def update_chart(n_intervals, play_clicks, pause_clicks, stop_clicks,data_store)
         df = pd.DataFrame(data_store)
         # 将Date列转换为datetime类型
         try:
-            df['Date'] = pd.to_datetime(df['close_time'])
+            if df.get('Date', ''):
+                df['Date'] = pd.to_datetime(df['Date'])
+            else:
+                df['Date'] = pd.to_datetime(df['close_time'])
         except Exception as e:
             print(f"Error converting Date column to datetime: {e}")
             # 如果转换失败，使用当前时间作为备选
@@ -687,7 +691,9 @@ def update_chart(n_intervals, play_clicks, pause_clicks, stop_clicks,data_store)
         # 如果是时间间隔触发，获取新数据
         if trigger_id == 'interval-component':
             df = generate_ohlc_data(df, new_points=1)
-    print(df.columns)
+
+    # 确保最多显示50条数据，适用于所有情况
+    df = df.tail(50)
     fig = create_candlestick_chart(df)
 
     # 处理按钮点击

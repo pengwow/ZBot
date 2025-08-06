@@ -1,0 +1,36 @@
+{
+    "exchanges": {
+        "default": {
+            "type": "binance",
+            "api_key": "your_api_key_here",
+            "secret_key": "your_secret_key_here",
+            "proxy_url": "",
+            "testnet": true
+        }
+    },
+    "strategies": {
+        "sma_cross_strategy": {
+            "class_path": "zbot.strategies.smacross.SmaCross",
+            "connector": "default",
+            "data_provider": "default",
+            "params": {
+                "short_window": 50,
+                "long_window": 200,
+                "tick_interval": 1
+            }
+        }
+    },
+    "data_providers": {
+        "default": {
+            "type": "exchange_connector",
+            "connector": "default",
+            "cache_ttl": 300
+        }
+    },
+    "risk_management": {
+        "max_position_size": 0.1,
+        "max_drawdown": 0.2,
+        "stop_loss_percent": 0.02,
+        "take_profit_percent": 0.05
+    }
+}
