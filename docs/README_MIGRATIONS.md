@@ -28,7 +28,7 @@ python zbot/services/migrations.py generate <migration_name>
 
 例如，添加一个新字段到`BacktestRecord`表：
 ```bash
-python zbot/services/migrations.py generate add_risk_metric_to_backtest_record
+python zbot/models/migrations.py generate add_risk_metric_to_backtest_record
 ```
 
 这将在`zbot/services/migrations`目录下生成一个带有时间戳的迁移文件，如`20241106123456_add_risk_metric_to_backtest_record.py`。
