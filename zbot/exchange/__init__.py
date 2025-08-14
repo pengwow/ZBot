@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 
 class Exchange(ABC):
-    def __init__(self, exchange_name, api_key, secret_key, trading_mode, proxy_url, testnet=False):
+    def __init__(self, exchange_name, api_key, secret_key, trading_mode, proxy_url, testnet=False, api_passphrase=None):
         self.exchange_name = exchange_name
         self.api_key = api_key
         self.secret_key = secret_key

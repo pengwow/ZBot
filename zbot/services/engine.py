@@ -4,7 +4,7 @@ import os
 from typing import Dict, List, Optional, Type
 from zbot.services.connectors.base_connector import AsyncExchange
 from zbot.services.strategy import AsyncBaseStrategy, AsyncDataProvider
-from zbot.exchange.binance import create_async_connector
+# from zbot.exchange.binance import create_async_connector
 from zbot.common.config import read_config
 
 
