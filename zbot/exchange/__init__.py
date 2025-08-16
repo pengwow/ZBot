@@ -17,3 +17,22 @@ class Exchange(ABC):
     @abstractmethod
     def load_data(self, *args, **kwargs) -> pd.DataFrame:
         pass
+
+    @abstractmethod
+    def health_check(self) -> bool:
+        """
+        策略健康检查，确保市场数据和账户信息正常，是做市风险控制的第一道防线
+        
+        健康检查在加密货币做市中至关重要，因为实时市场数据和账户状态的准确性直接影响：
+        1. 订单定价合理性
+        2. 风险敞口控制
+        3. 策略决策有效性
+        
+        检查项包括：
+        1. 订单簿数据新鲜度（延迟不超过设定阈值）
+        2. 订单簿校验和（确保数据完整性，防止传输错误）
+        3. 账户信息时效性
+        
+        :return: True表示健康状态良好，False表示存在异常需要处理
+        """
+        pass

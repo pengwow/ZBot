@@ -25,3 +25,5 @@ dash-renderer==1.9.1
 python-okx==0.4.0
 python-socketio==5.13.0
 websockets==15.0.1
+binance-sdk-spot==1.2.0  # 现货
+binance-sdk-derivatives-trading-usds-futures==1.2.0  # U本位合约
