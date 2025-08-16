@@ -1,6 +1,7 @@
-# from typing import Optional
-# from .connector import BinanceExchange
-# # from .connector import AsyncBinanceExchange
+from typing import Optional
+from .connector import BinanceExchange
+# from .connector import AsyncBinanceExchange
+from .websocket_connector import BinanceWebSocketConnector
 
 
 # def create_async_connector(api_key: Optional[str] = None, secret_key: Optional[str] = None, proxy_url: Optional[str] = None, testnet: Optional[bool] = None) -> AsyncBinanceExchange:

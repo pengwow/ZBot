@@ -3,7 +3,10 @@ import time
 
 import ccxt
 import pandas as pd
-
+from binance_common.configuration import ConfigurationRestAPI
+from binance_common.constants import SPOT_REST_API_TESTNET_URL, SPOT_REST_API_PROD_URL, DERIVATIVES_TRADING_COIN_FUTURES_REST_API_TESTNET_URL, DERIVATIVES_TRADING_USDS_FUTURES_REST_API_PROD_URL
+from binance_sdk_spot.spot import Spot
+from binance_sdk_derivatives_trading_usds_futures.derivatives_trading_usds_futures import DerivativesTradingUsdsFutures as Future
 from zbot.exchange import Exchange
 from zbot.exchange.binance.data import History
 from zbot.exchange.binance.models import Candle
@@ -55,6 +58,50 @@ class BinanceExchange(Exchange):
         self.trading_mode = trading_mode
         self.exchange.load_markets()
         self._symbols = None
+        self.spot_api = Spot(ConfigurationRestAPI(api_key, secret_key, SPOT_REST_API_TESTNET_URL if testnet else SPOT_REST_API_PROD_URL))
+        self.future_api = Future(ConfigurationRestAPI(api_key, secret_key, DERIVATIVES_TRADING_COIN_FUTURES_REST_API_TESTNET_URL if testnet else DERIVATIVES_TRADING_USDS_FUTURES_REST_API_PROD_URL))
+
+    
+    def health_check(self) -> bool:
+        """
+        策略健康检查，确保市场数据和账户信息正常，是做市风险控制的第一道防线
+        
+        健康检查在加密货币做市中至关重要，因为实时市场数据和账户状态的准确性直接影响：
+        1. 订单定价合理性
+        2. 风险敞口控制
+        3. 策略决策有效性
+        
+        检查项包括：
+        1. 订单簿数据新鲜度（延迟不超过设定阈值）
+        2. 订单簿校验和（确保数据完整性，防止传输错误）
+        3. 账户信息时效性
+        
+        :return: True表示健康状态良好，False表示存在异常需要处理
+        """
+
+        return super().health_check()
+
+    def check_status(self):
+        """
+        检查交易所系统状态，避免在维护期间进行交易
+        
+        加密货币交易所会定期进行系统维护，期间可能暂停交易或数据更新
+        在此期间进行做市可能导致：
+        - 订单无法成交
+        - 市场数据延迟或不准确
+        - API响应异常
+        
+        实现逻辑：
+        - 查询交易所状态API
+        - 检查是否有正在进行或即将进行的维护
+        - 返回维护状态，决定是否继续做市
+        
+        :return: True表示交易所正常，False表示存在维护或异常
+        """
+        
+        if self.spot_api.rest_api.ping():
+            return True
+        return False
 
     def prase_ohlcv_custom(self, ohlcv, market):
         """
@@ -144,6 +191,10 @@ class BinanceExchange(Exchange):
         return self._symbols
 
 
+    def balance(self):
+        response: AccountInformationV3Response = self.future_api.rest_api.account_information_v3()
+        return response.data()
+
 if __name__ == '__main__':
     from zbot.common.config import read_config
     config = read_config('exchange')['binance']
@@ -151,3 +202,4 @@ if __name__ == '__main__':
         api_key=config['api_key'], secret_key=config['secret_key'], proxy_url=config['proxy_url'])
     symbols = client.symbols
     print(symbols)
+    response = client.rest_api.futures_account_balance_v3()

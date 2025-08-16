@@ -16,8 +16,11 @@ try:
 
     # data: ExchangeInformationResponse = response.data()
     # logging.info(f"exchange_information() response: {data}")
-    response = client.rest_api.all_orders(symbol="BTCUSDT")
-    order_data: AllOrdersResponse = response.data()
-    logging.info(f"all_orders() response: {order_data}")
+    # response = client.rest_api.all_orders(symbol="BTCUSDT")
+    # order_data: AllOrdersResponse = response.data()
+    # logging.info(f"all_orders() response: {order_data}")
+    response = client.rest_api.futures_account_balance_v3()
+    order_book_data = response.data()
+    logging.info(f"futures_account_balance_v3() response: {order_book_data}")
 except Exception as e:
     logging.error(f"exchange_information() error: {e}")
