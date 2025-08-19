@@ -36,3 +36,25 @@ class Exchange(ABC):
         :return: True表示健康状态良好，False表示存在异常需要处理
         """
         pass
+
+    @abstractmethod
+    def set_account_config(self):
+        """
+        获取并设置账户配置模式（现金/单币种保证金/多币种保证金/组合保证金）
+        
+        账户模式决定了：
+        1. 可用的交易类型（现货/保证金/衍生品）
+        2. 保证金计算方式
+        3. 风险控制规则
+        4. 资金利用率
+        
+        实现逻辑：通过账户API获取账户等级，映射为对应的账户配置模式枚举值
+        
+        异常处理：
+        - 捕获httpx.ConnectError连接错误并重试最多3次
+        - 其他异常将被重新抛出
+        
+        :raises httpx.ConnectError: 当网络连接失败且重试超过限制时
+        :raises Exception: 当API返回错误码时
+        """
+        pass

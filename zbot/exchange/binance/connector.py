@@ -195,6 +195,47 @@ class BinanceExchange(Exchange):
         response: AccountInformationV3Response = self.future_api.rest_api.account_information_v3()
         return response.data()
 
+    def set_account_config(self):
+        """
+        获取并设置账户配置模式（现金/单币种保证金/多币种保证金/组合保证金）
+        
+        账户模式决定了：
+        1. 可用的交易类型（现货/保证金/衍生品）
+        2. 保证金计算方式
+        3. 风险控制规则
+        4. 资金利用率
+        
+        实现逻辑：通过账户API获取账户等级，映射为对应的账户配置模式枚举值
+        
+        异常处理：
+        - 捕获httpx.ConnectError连接错误并重试最多3次
+        - 其他异常将被重新抛出
+        
+        :raises httpx.ConnectError: 当网络连接失败且重试超过限制时
+        :raises Exception: 当API返回错误码时
+        """
+        max_retries = 10
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                account_config = self.account_api.get_account_config()
+                
+                if account_config.get("code") == '0':
+                    self._account_mode = AccountConfigMode(int(account_config.get("data")[0]['acctLv']))
+                    return  # 成功获取配置后直接返回
+                else:
+                    raise Exception(f"Account API returned error code: {account_config.get('code')}")
+            except httpx.ConnectError as e:
+                retry_count += 1
+                print(f"连接错误 (尝试 {retry_count}/{max_retries}): {e}")
+                if retry_count >= max_retries:
+                    raise  # 重试次数用尽后重新抛出异常
+                time.sleep(1)  # 等待1秒后重试
+            except Exception as e:
+                # 对于非连接错误，直接抛出
+                raise
+
 if __name__ == '__main__':
     from zbot.common.config import read_config
     config = read_config('exchange')['binance']

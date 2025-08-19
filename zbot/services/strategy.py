@@ -3,12 +3,35 @@ import asyncio
 from typing import Dict, List, Optional, Any
 from zbot.strategies.base_strategy import BaseStrategy
 from zbot.services.events import event_bus, EventType
+from zbot.common.config import read_config
+from zbot.exchange.exchange import ExchangeFactory
+
+
+class AsyncDataProvider:
+    """异步数据提供器基类"""
+    @abstractmethod
+    async def fetch_ohlcv(self, symbol: str, interval: str, start_time: Optional[float] = None,
+                          end_time: Optional[float] = None, limit: int = 100) -> List[Dict]:
+        """异步获取K线数据"""
+        pass
+
+    @abstractmethod
+    async def subscribe_ohlcv(self, symbol: str, interval: str) -> bool:
+        """订阅K线数据"""
+        pass
+
+    @abstractmethod
+    async def unsubscribe_ohlcv(self, symbol: str, interval: str) -> bool:
+        """取消订阅K线数据"""
+        pass
 
 
 class AsyncBaseStrategy(BaseStrategy):
     """异步策略基类，继承自BaseStrategy，添加异步支持"""
+
     def __init__(self, params: Dict = None):
         super().__init__(params)
+        self._exchange = ExchangeFactory.create_exchange('binance')
         self._running = False
         self._task = None
         self._connector = None  # 交易所连接器
@@ -32,6 +55,7 @@ class AsyncBaseStrategy(BaseStrategy):
         """启动策略"""
         if self._running:
             return
+        self._exchange.set_account_config(self.params)
 
         self._running = True
         # 订阅事件
@@ -176,22 +200,3 @@ class AsyncBaseStrategy(BaseStrategy):
     async def __aexit__(self, exc_type, exc, tb):
         await self.stop()
         return False
-
-
-class AsyncDataProvider:
-    """异步数据提供器基类"""
-    @abstractmethod
-    async def fetch_ohlcv(self, symbol: str, interval: str, start_time: Optional[float] = None,
-                         end_time: Optional[float] = None, limit: int = 100) -> List[Dict]:
-        """异步获取K线数据"""
-        pass
-
-    @abstractmethod
-    async def subscribe_ohlcv(self, symbol: str, interval: str) -> bool:
-        """订阅K线数据"""
-        pass
-
-    @abstractmethod
-    async def unsubscribe_ohlcv(self, symbol: str, interval: str) -> bool:
-        """取消订阅K线数据"""
-        pass
